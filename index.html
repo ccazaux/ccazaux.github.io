@@ -57,7 +57,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
     <div class="tiles" id="tiles"></div>
     <h3>Comment naviguer ?</h3>
     <p>Les dossiers <strong>TP</strong> et <strong>TD</strong> se déplient dans le menu. Les fichiers PDF s’ouvrent dans le lecteur du navigateur ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie.</p>
-    <div class="notice">Ce portail est un exemple : remplacez les fichiers de démonstration par vos propres cours en conservant les noms ou en adaptant les liens dans <code>index.html</code>.</div>
+    <div class="notice">Les dossiers et fichiers du dépôt sont détectés automatiquement. Ajoutez simplement vos documents dans GitHub : ils apparaîtront ici après actualisation du site.</div>
   </section>
   <section class="viewer" id="viewer" hidden>
     <h2 id="fileTitle"></h2>
@@ -69,33 +69,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-/* Modifiez cette arborescence pour ajouter vos matières et documents.
-   Les chemins sont relatifs à ce fichier index.html. */
-const courses = [
- {name:"1 - Numération",type:"folder",children:[
-  {name:"Cours",type:"markdown",path:"1-numeration/Cours.md"},
-  {name:"Démonstration interactive",type:"html",path:"1-numeration/demo.html"},
-  {name:"TP",type:"folder",children:[
-   {name:"TP1 - Systèmes de numération.pdf",type:"pdf",path:"1-numeration/TP/TP1.pdf"},
-   {name:"TP2 - Conversions.pdf",type:"pdf",path:"1-numeration/TP/TP2.pdf"}]},
-  {name:"TD",type:"folder",children:[
-   {name:"TD1 - Exercices.pdf",type:"pdf",path:"1-numeration/TD/TD1.pdf"},
-   {name:"TD2 - Applications.pdf",type:"pdf",path:"1-numeration/TD/TD2.pdf"}]}
- ]},
- {name:"2 - Électricité",type:"folder",children:[
-  {name:"Cours",type:"markdown",path:"2-electricite/Cours.md"},
-  {name:"Démonstration interactive",type:"html",path:"2-electricite/demo.html"},
-  {name:"TP",type:"folder",children:[
-   {name:"TP1 - Loi d'Ohm.pdf",type:"pdf",path:"2-electricite/TP/TP1.pdf"}]},
-  {name:"TD",type:"folder",children:[
-   {name:"TD1 - Circuits.pdf",type:"pdf",path:"2-electricite/TD/TD1.pdf"}]}
- ]},
- {name:"3 - Mécanique",type:"folder",children:[
-  {name:"Cours",type:"markdown",path:"3-mecanique/Cours.md"},
-  {name:"TP",type:"folder",children:[]},
-  {name:"TD",type:"folder",children:[]}
- ]}
-];
+/* Détection automatique des dossiers et fichiers du dépôt GitHub.
+   Le dépôt doit être public. Pour un domaine personnalisé, renseignez repoOwner/repoName ci-dessous. */
+const repoOwner = ""; // facultatif : propriétaire GitHub
+const repoName = "";  // facultatif : nom du dépôt
+let courses = [];
 const $ = s => document.querySelector(s);
 const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",other:"📄"};
 const tree = $("#tree");
@@ -121,7 +99,7 @@ function renderTree(items,parent,depth=0){
  });
  parent.append(ul);return ul;
 }
-renderTree(courses,tree);
+
 function openFile(file,button){
  document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
  if(button)button.classList.add("active");
@@ -149,11 +127,73 @@ function openFile(file,button){
  }else{addLink("⬇ Télécharger le fichier",true)}
  if(innerWidth<=760)$("#layout").classList.add("sidebar-collapsed");
 }
+function prettyName(segment){
+ return segment.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toLocaleUpperCase('fr'));
+}
+function fileType(path){
+ const ext=path.split('.').pop().toLowerCase();
+ if(ext==='md'||ext==='markdown')return 'markdown';
+ if(ext==='html'||ext==='htm')return 'html';
+ if(ext==='pdf')return 'pdf';
+ return 'other';
+}
+function buildTree(paths){
+ const root={children:new Map()};
+ for(const path of paths){
+  if(!path || path.startsWith('.') || path==='index.html' || path.toLowerCase()==='readme.md')continue;
+  const parts=path.split('/'); let node=root;
+  parts.forEach((part,i)=>{
+   if(!node.children.has(part))node.children.set(part,{name:part,children:new Map(),path:null});
+   node=node.children.get(part);
+   if(i===parts.length-1)node.path=path;
+  });
+ }
+ function convert(node){
+  return [...node.children.values()].sort((a,b)=>{
+   const af=a.children.size>0||!a.path, bf=b.children.size>0||!b.path;
+   return af===bf?a.name.localeCompare(b.name,'fr',{numeric:true}):(af?-1:1);
+  }).map(item=>{
+   if(item.children.size>0||!item.path)return {name:prettyName(item.name),type:'folder',children:convert(item)};
+   return {name:item.name,type:fileType(item.path),path:item.path};
+  });
+ }
+ return convert(root);
+}
+async function discoverRepositoryFiles(){
+ const host=location.hostname;
+ const owner=repoOwner || host.split('.')[0];
+ let repo=repoName;
+ if(!repo){
+  if(host.endsWith('.github.io')) repo=location.pathname.split('/').filter(Boolean)[0] || (owner+'.github.io');
+  else throw new Error('Dépôt introuvable automatiquement. Renseignez repoOwner et repoName dans index.html.');
+ }
+ const infoResponse=await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+ if(!infoResponse.ok)throw new Error('Impossible d’accéder au dépôt GitHub. Vérifiez que le dépôt est public et que son nom est correct.');
+ const info=await infoResponse.json();
+ const treeResponse=await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(info.default_branch)}?recursive=1`);
+ if(!treeResponse.ok)throw new Error('GitHub n’a pas pu lire l’arborescence du dépôt.');
+ const data=await treeResponse.json();
+ if(data.truncated)throw new Error('Le dépôt contient trop de fichiers pour une lecture complète via l’API GitHub.');
+ return (data.tree||[]).filter(x=>x.type==='blob').map(x=>x.path);
+}
+async function initializePortal(){
+ const status=document.createElement('p');status.className='notice';status.textContent='Détection des dossiers et fichiers du dépôt…';tree.append(status);
+ try{
+  const paths=await discoverRepositoryFiles();
+  courses=buildTree(paths);
+  tree.replaceChildren();
+  if(!courses.length){tree.textContent='Aucun document trouvé dans les sous-dossiers du dépôt.';return;}
+  renderTree(courses,tree);
+  makeTiles();
+ }catch(error){
+  status.textContent=error.message+' Vous pouvez aussi vérifier les paramètres du dépôt dans index.html.';
+ }
+}
 function makeTiles(){
  const tiles=$("#tiles");
  courses.forEach((c,i)=>{const b=document.createElement("button");b.className="tile";b.innerHTML=`<span>📁 MATIÈRE ${i+1}</span><strong></strong><span>Explorer les ressources →</span>`;b.querySelector("strong").textContent=c.name.replace(/^\d+\s*-\s*/,"");b.onclick=()=>{const first=allFiles([c])[0];if(first)openFile(first,null);};tiles.append(b);});
 }
-makeTiles();
+initializePortal();
 $("#search").addEventListener("input",e=>{
  const q=e.target.value.trim().toLocaleLowerCase("fr");
  document.querySelectorAll("#tree li").forEach(li=>li.style.display="");

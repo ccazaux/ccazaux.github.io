@@ -42,3 +42,10 @@ Votre portail sera accessible à une adresse du type `https://VOTRE-PSEUDO.githu
 Avec un dépôt public et GitHub Pages, les fichiers et le site sont accessibles publiquement. Ne publiez pas de données personnelles, de copies d'élèves, de corrigés réservés ou de documents soumis à des restrictions de diffusion.
 
 Les liens `download` invitent le navigateur à télécharger le fichier ; selon le navigateur et le type de fichier, certains PDF peuvent néanmoins s'ouvrir dans un nouvel onglet. Le fichier reste téléchargeable depuis GitHub.
+
+
+## Détection automatique des documents
+
+Le portail lit automatiquement l’arborescence du dépôt public via l’API GitHub. Après avoir ajouté un dossier ou un fichier et validé les changements, actualisez le site : les nouveaux éléments apparaissent dans le menu sans modifier `index.html`. Les fichiers Markdown (`.md`), HTML (`.html`) et PDF (`.pdf`) sont reconnus automatiquement ; les autres fichiers sont proposés au téléchargement.
+
+**Important :** le dépôt doit être public pour que l’API GitHub puisse lire son contenu sans connexion. Sur une adresse GitHub Pages standard (`https://proprietaire.github.io/nom-du-depot/`), le propriétaire et le dépôt sont détectés automatiquement. Si vous utilisez un domaine personnalisé, renseignez `repoOwner` et `repoName` au début du script dans `index.html`.
