@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Portail pédagogique : cours, démonstrations, TP et TD.">
+<title>Mes cours — Portail pédagogique</title>
+<style>
+:root{--navy:#172b46;--blue:#2463a6;--bg:#f3f6fa;--line:#e2e8f0;--muted:#64748b;--panel:#fff;--active:#eaf2fc}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#243247;background:var(--bg)}
+header{height:68px;background:var(--navy);color:white;display:flex;align-items:center;padding:0 22px;gap:13px;box-shadow:0 2px 8px #10203330}
+.logo{font-size:25px}header h1{font-size:19px;margin:0;font-weight:700}header small{display:block;color:#c6d5e7;font-size:12px}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 68px)}
+aside{background:#fff;border-right:1px solid var(--line);padding:18px 14px;overflow:auto}
+.search{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;margin:0 0 15px}
+.tree-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700;padding:4px 9px 9px}
+.tree ul{list-style:none;margin:0;padding-left:15px}.tree>ul{padding-left:0}
+.tree li{margin:2px 0}.tree button{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;border-radius:7px;font:inherit;color:#334155;cursor:pointer;display:flex;gap:8px;align-items:center}
+.tree button:hover{background:#f1f5f9}.tree button.active{background:var(--active);color:#174f8c;font-weight:650}
+.tree .children{padding-left:17px;border-left:1px solid var(--line);margin-left:16px}
+.tree .hidden{display:none}.ico{width:20px;text-align:center;flex:none}.label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.tag{font-size:10px;color:var(--muted);background:#f1f5f9;border-radius:5px;padding:2px 5px}
+main{padding:28px clamp(18px,4vw,54px);min-width:0;max-width:1150px;width:100%;margin:0 auto}
+.breadcrumb{font-size:12px;color:var(--muted);margin-bottom:14px}
+.welcome,.viewer{background:white;border:1px solid var(--line);border-radius:14px;padding:clamp(20px,4vw,38px);box-shadow:0 4px 18px #1e293b08}
+h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}h3{margin-top:25px;color:#172b46}
+.lead{color:#526174;max-width:720px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px;margin-top:25px}
+.tile{border:1px solid var(--line);border-radius:11px;padding:17px;background:#fff;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.tile:hover{border-color:#8bb4e2;background:#f8fbff}.tile strong{display:block;margin:7px 0 3px}.tile span{font-size:12px;color:var(--muted)}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:17px 0 20px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#24415f;text-decoration:none;font:inherit;font-size:13px;cursor:pointer}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.content{overflow-wrap:anywhere}.content img{max-width:100%;height:auto}.content pre{overflow:auto;background:#f1f5f9;padding:14px;border-radius:8px}.content code{background:#f1f5f9;padding:2px 4px;border-radius:4px}.content pre code{background:transparent;padding:0}
+.content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
+iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
+.notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px}
+.empty{color:var(--muted);padding:15px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
+.mobilebar{display:none}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.mobilebar{display:flex;background:#fff;border-bottom:1px solid var(--line);padding:9px 14px}.mobilebar button{border:1px solid var(--line);border-radius:7px;background:white;padding:7px 10px}.sidebar-collapsed aside{display:none}aside{border-right:0;border-bottom:1px solid var(--line);max-height:48vh}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}}
+</style>
+</head>
+<body>
+<header><div class="logo">📚</div><div><h1>Mes cours</h1><small>Portail pédagogique</small></div></header>
+<div class="mobilebar"><button id="toggleNav" type="button">☰ Afficher / masquer les matières</button></div>
+<div class="layout" id="layout">
+<aside>
+  <input id="search" class="search" type="search" placeholder="Rechercher un cours ou un fichier…" aria-label="Rechercher">
+  <div class="tree-title">Bibliothèque</div>
+  <nav class="tree" id="tree" aria-label="Arborescence des cours"></nav>
+</aside>
+<main>
+  <div class="breadcrumb" id="breadcrumb">Accueil</div>
+  <section class="welcome" id="welcome">
+    <h2>Bienvenue dans vos cours</h2>
+    <p class="lead">Choisissez une matière dans l’arborescence à gauche. Vous pourrez consulter les cours, lancer les démonstrations interactives et ouvrir ou télécharger les documents PDF.</p>
+    <div class="tiles" id="tiles"></div>
+    <h3>Comment naviguer ?</h3>
+    <p>Les dossiers <strong>TP</strong> et <strong>TD</strong> se déplient dans le menu. Les fichiers PDF s’ouvrent dans le lecteur du navigateur ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie.</p>
+    <div class="notice">Ce portail est un exemple : remplacez les fichiers de démonstration par vos propres cours en conservant les noms ou en adaptant les liens dans <code>index.html</code>.</div>
+  </section>
+  <section class="viewer" id="viewer" hidden>
+    <h2 id="fileTitle"></h2>
+    <div class="toolbar" id="toolbar"></div>
+    <div class="content" id="content"></div>
+  </section>
+  <footer>Portail pédagogique • Publié avec GitHub Pages</footer>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+/* Modifiez cette arborescence pour ajouter vos matières et documents.
+   Les chemins sont relatifs à ce fichier index.html. */
+const courses = [
+ {name:"1 - Numération",type:"folder",children:[
+  {name:"Cours",type:"markdown",path:"1-numeration/Cours.md"},
+  {name:"Démonstration interactive",type:"html",path:"1-numeration/demo.html"},
+  {name:"TP",type:"folder",children:[
+   {name:"TP1 - Systèmes de numération.pdf",type:"pdf",path:"1-numeration/TP/TP1.pdf"},
+   {name:"TP2 - Conversions.pdf",type:"pdf",path:"1-numeration/TP/TP2.pdf"}]},
+  {name:"TD",type:"folder",children:[
+   {name:"TD1 - Exercices.pdf",type:"pdf",path:"1-numeration/TD/TD1.pdf"},
+   {name:"TD2 - Applications.pdf",type:"pdf",path:"1-numeration/TD/TD2.pdf"}]}
+ ]},
+ {name:"2 - Électricité",type:"folder",children:[
+  {name:"Cours",type:"markdown",path:"2-electricite/Cours.md"},
+  {name:"Démonstration interactive",type:"html",path:"2-electricite/demo.html"},
+  {name:"TP",type:"folder",children:[
+   {name:"TP1 - Loi d'Ohm.pdf",type:"pdf",path:"2-electricite/TP/TP1.pdf"}]},
+  {name:"TD",type:"folder",children:[
+   {name:"TD1 - Circuits.pdf",type:"pdf",path:"2-electricite/TD/TD1.pdf"}]}
+ ]},
+ {name:"3 - Mécanique",type:"folder",children:[
+  {name:"Cours",type:"markdown",path:"3-mecanique/Cours.md"},
+  {name:"TP",type:"folder",children:[]},
+  {name:"TD",type:"folder",children:[]}
+ ]}
+];
+const $ = s => document.querySelector(s);
+const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",other:"📄"};
+const tree = $("#tree");
+function allFiles(items,out=[]){items.forEach(x=>{if(x.type==="folder")allFiles(x.children,out);else out.push(x)});return out}
+function renderTree(items,parent,depth=0){
+ const ul=document.createElement("ul");
+ items.forEach(item=>{
+  const li=document.createElement("li");
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.innerHTML=`<span class="ico">${icons[item.type]||"📄"}</span><span class="label"></span>${item.type==="folder"?"<span class='tag'>dossier</span>":""}`;
+  btn.querySelector(".label").textContent=item.name;
+  if(item.type==="folder"){
+   const child=renderTree(item.children,li,depth+1);child.className="children";
+   btn.setAttribute("aria-expanded","false");
+   btn.addEventListener("click",()=>{const open=!child.classList.contains("hidden");child.classList.toggle("hidden",open);btn.setAttribute("aria-expanded",String(!open));});
+   li.append(btn,child);
+  }else{
+   btn.addEventListener("click",()=>openFile(item,btn));
+   li.append(btn);
+  }
+  ul.append(li);
+ });
+ parent.append(ul);return ul;
+}
+renderTree(courses,tree);
+function openFile(file,button){
+ document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
+ if(button)button.classList.add("active");
+ $("#welcome").hidden=true;$("#viewer").hidden=false;
+ $("#fileTitle").textContent=file.name;
+ $("#breadcrumb").textContent=file.path;
+ const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
+ const addLink=(label,download=false)=>{const a=document.createElement("a");a.className="btn";a.href=file.path;a.textContent=label;if(download)a.download="";else a.target="_blank";toolbar.append(a)};
+ if(file.type==="markdown"){
+  addLink("↗ Ouvrir le fichier brut");
+  addLink("⬇ Télécharger le Markdown",true);
+  content.textContent="Chargement du cours…";
+  fetch(file.path).then(r=>{if(!r.ok)throw Error("Fichier introuvable");return r.text()})
+   .then(md=>{if(window.marked){content.innerHTML=marked.parse(md);}else{content.textContent=md;}})
+   .catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce cours. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="pdf"){
+  addLink("⬇ Télécharger le PDF",true);
+  addLink("↗ Ouvrir dans un nouvel onglet");
+  const frame=document.createElement("iframe");frame.className="document";frame.src=file.path;frame.title=file.name;content.append(frame);
+ }else if(file.type==="html"){
+  addLink("↗ Ouvrir la démonstration dans un nouvel onglet");
+  const frame=document.createElement("iframe");frame.className="document";frame.src=file.path;frame.title=file.name;
+  frame.setAttribute("sandbox","allow-scripts allow-forms allow-downloads allow-modals");
+  content.append(frame);
+ }else{addLink("⬇ Télécharger le fichier",true)}
+ if(innerWidth<=760)$("#layout").classList.add("sidebar-collapsed");
+}
+function makeTiles(){
+ const tiles=$("#tiles");
+ courses.forEach((c,i)=>{const b=document.createElement("button");b.className="tile";b.innerHTML=`<span>📁 MATIÈRE ${i+1}</span><strong></strong><span>Explorer les ressources →</span>`;b.querySelector("strong").textContent=c.name.replace(/^\d+\s*-\s*/,"");b.onclick=()=>{const first=allFiles([c])[0];if(first)openFile(first,null);};tiles.append(b);});
+}
+makeTiles();
+$("#search").addEventListener("input",e=>{
+ const q=e.target.value.trim().toLocaleLowerCase("fr");
+ document.querySelectorAll("#tree li").forEach(li=>li.style.display="");
+ if(!q)return;
+ document.querySelectorAll("#tree button").forEach(btn=>{
+  const match=btn.textContent.toLocaleLowerCase("fr").includes(q);
+  if(match){let p=btn.parentElement;while(p&&p!==tree){if(p.tagName==="LI")p.style.display="";if(p.classList?.contains("children"))p.classList.remove("hidden");p=p.parentElement;}}
+  else if(btn.parentElement.querySelector("ul")===null)btn.parentElement.style.display="none";
+ });
+});
+$("#toggleNav").addEventListener("click",()=>$("#layout").classList.toggle("sidebar-collapsed"));
+</script>
+</body>
+</html>
