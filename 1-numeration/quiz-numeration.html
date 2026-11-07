@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz – Conversions binaire / décimal / hexadécimal</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5d6678; --border:#d9dde5;
+  --accent:#2457d6; --ok:#1a8f4c; --okbg:#e6f6ec; --ko:#c62828; --kobg:#fdeaea; --code:#eef1f6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171d; --card:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --border:#333a47;
+    --accent:#6c9bff; --ok:#4cc27f; --okbg:#173325; --ko:#ff7b7b; --kobg:#3a1c1c; --code:#262c37;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:1rem;margin:0 0 8px;color:var(--accent)}
+.card p{margin:0 0 8px}
+input[type=text]{width:100%;max-width:340px;padding:8px 10px;font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;
+  border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+input[disabled]{opacity:.7}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--accent)}
+pre{background:var(--code);padding:10px 12px;border-radius:6px;overflow-x:auto;margin:6px 0;font-size:.95rem}
+table.wt{border-collapse:collapse;margin:6px 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem}
+table.wt td,table.wt th{border:1px solid var(--border);padding:3px 8px;text-align:center}
+table.wt td{color:var(--muted)}
+.svgwrap{overflow-x:auto}
+svg{max-width:100%;height:auto;color:var(--text)}
+#result{display:none}
+.score{font-size:2rem;font-weight:700;margin:0}
+.item{border-left:5px solid var(--border)}
+.item.ok{border-left-color:var(--ok)}
+.item.ko{border-left-color:var(--ko)}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.85rem;margin-left:6px}
+.badge.ok{background:var(--okbg);color:var(--ok)}
+.badge.ko{background:var(--kobg);color:var(--ko)}
+.exp{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:.95rem}
+.hint{font-size:.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Quiz : conversions binaire · décimal · hexadécimal</h1>
+  <p class="sub">10 questions, une note sur 10, corrigé détaillé à la fin. Les valeurs changent à chaque nouveau test.
+  Saisissez uniquement le nombre (espaces autorisés, majuscules ou minuscules en hexadécimal).</p>
+
+  <div id="quiz"></div>
+
+  <div class="btns" id="actions">
+    <button type="button" id="submit">Valider et voir ma note</button>
+    <button type="button" class="sec" id="restart">Nouveau test</button>
+  </div>
+
+  <div id="result">
+    <div class="card"><p class="score" id="score"></p><p id="comment"></p></div>
+    <h2 style="margin:18px 0 10px">Corrigé</h2>
+    <div id="corrige"></div>
+    <div class="btns"><button type="button" id="restart2">Refaire un test avec d’autres valeurs</button></div>
+  </div>
+</main>
+
+<script>
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[rnd(0, arr.length - 1)];
+const HEX = '0123456789ABCDEF';
+const toBin = (n, len = 0) => n.toString(2).padStart(len, '0');
+const g4 = s => s.padStart(Math.ceil(s.length / 4) * 4, '0').match(/.{4}/g).join(' ');
+
+function weightTable(bits) {
+  const L = bits.length;
+  let w = '', b = '';
+  for (let i = 0; i < L; i++) {
+    w += `<td>${2 ** (L - 1 - i)}</td>`;
+    b += `<th>${bits[i]}</th>`;
+  }
+  return `<table class="wt"><tr>${w}</tr><tr>${b}</tr></table>`;
+}
+
+/* ---------- Générateurs de questions ---------- */
+function qBinToDec() {
+  const n = rnd(20, 255), bits = toBin(n, 8);
+  const terms = [];
+  for (let i = 0; i < 8; i++) if (bits[i] === '1') terms.push(2 ** (7 - i));
+  return {
+    type: 'dec',
+    text: `Convertir <b>(${g4(bits)})<sub>2</sub></b> en décimal.`,
+    ans: String(n), show: String(n),
+    exp: `On place les bits dans le tableau des puissances de 2 :${weightTable(bits)}
+          On additionne les poids des bits à 1 : ${terms.join(' + ')} = <b>${n}</b>.`
+  };
+}
+
+function qHexToDec() {
+  let digits = [rnd(1, 15), rnd(0, 15), rnd(0, 15)];
+  const hex = digits.map(d => HEX[d]).join('');
+  const n = digits[0] * 256 + digits[1] * 16 + digits[2];
+  const conv = digits.map(d => `${HEX[d]} → ${d}`).join(' ; ');
+  return {
+    type: 'dec',
+    text: `Convertir <b>(${hex})<sub>16</sub></b> en décimal.`,
+    ans: String(n), show: String(n),
+    exp: `Valeur de chaque chiffre : ${conv}.<br>
+          ${digits[2]}×16<sup>0</sup> + ${digits[1]}×16<sup>1</sup> + ${digits[0]}×16<sup>2</sup>
+          = ${digits[2]} + ${digits[1] * 16} + ${digits[0] * 256} = <b>${n}</b>.`
+  };
+}
+
+function qDecToBin() {
+  const n = rnd(257, 2047), bits = toBin(n);
+  const hp = 2 ** (bits.length - 1);
+  return {
+    type: 'bin',
+    text: `Convertir <b>(${n})<sub>10</sub></b> en binaire.`,
+    ans: bits, show: g4(bits),
+    exp: `La plus grande puissance de 2 inférieure ou égale à ${n} est ${hp}. Méthode du tableau :${weightTable(bits)}
+          Résultat : <b>${g4(bits)}</b> (on peut aussi faire des divisions successives par 2 et lire les restes de bas en haut).`
+  };
+}
+
+function qBinToHex() {
+  const len = rnd(5, 8);
+  let bits = '1';
+  for (let i = 1; i < len; i++) bits += rnd(0, 1);
+  const padded = bits.padStart(Math.ceil(len / 4) * 4, '0');
+  const groups = padded.match(/.{4}/g);
+  const hex = groups.map(g => HEX[parseInt(g, 2)]).join('');
+  return {
+    type: 'hex',
+    text: `Convertir <b>(${bits})<sub>2</sub></b> en hexadécimal.`,
+    ans: hex, show: hex,
+    exp: `On groupe par 4 bits en partant de la droite (en complétant par des 0 à gauche) :
+          ${groups.join(' ')}<br>
+          ${groups.map(g => `${g} → ${HEX[parseInt(g, 2)]}`).join(' ; ')}<br>
+          Résultat : <b>(${hex})<sub>16</sub></b>.`
+  };
+}
+
+function qDecToHex() {
+  const n = rnd(32, 255), q = Math.floor(n / 16), r = n % 16;
+  const hex = HEX[q] + HEX[r];
+  return {
+    type: 'hex',
+    text: `Convertir <b>(${n})<sub>10</sub></b> en hexadécimal.`,
+    ans: hex, show: hex,
+    exp: `Division par 16 : ${n} = ${q}×16 + ${r}.<br>
+          Quotient ${q} → ${HEX[q]} ; reste ${r} → ${HEX[r]}.<br>
+          Résultat : <b>(${hex})<sub>16</sub></b>.
+          (Variante : passer par le binaire ${g4(toBin(n, 8))} puis regrouper par 4 bits.)`
+  };
+}
+
+function qAddBin() {
+  const a = rnd(16, 200), b = rnd(16, 255 - a), s = a + b;
+  const A = toBin(a, 8), B = toBin(b, 8), S = toBin(s, 8);
+  const cin = [];
+  let c = 0;
+  for (let pos = 0; pos < 8; pos++) {
+    cin[pos] = c;
+    c = (((a >> pos) & 1) + ((b >> pos) & 1) + c) >> 1;
+  }
+  let carry = '';
+  for (let pos = 7; pos >= 0; pos--) {
+    carry += cin[pos] ? '1' : ' ';
+    if (pos === 4) carry += ' ';
+  }
+  const calc = `  ${carry}   (retenues)\n  ${g4(A)}\n+ ${g4(B)}\n  ---------\n  ${g4(S)}`;
+  return {
+    type: 'bin',
+    text: `Additionner <b>(${g4(A)})<sub>2</sub></b> et <b>(${g4(B)})<sub>2</sub></b> en binaire, sans convertir en décimal.
+           Donner le résultat sur 8 bits.`,
+    ans: S, show: g4(S),
+    exp: `On additionne colonne par colonne en partant de la droite (0+0=0 ; 0+1=1 ; 1+1=10 → on pose 0 et on retient 1) :
+          <pre>${calc}</pre>Résultat : <b>${g4(S)}</b>.`
+  };
+}
+
+function qNmax() {
+  const n = pick([4, 5, 6, 10, 12, 16]), v = 2 ** n - 1;
+  return {
+    type: 'dec',
+    text: `Un nombre entier non signé est codé sur <b>${n} bits</b>. Donner <b>N<sub>max</sub></b>, la plus grande valeur
+           (en décimal) que l’on peut représenter.`,
+    ans: String(v), show: String(v),
+    exp: `N<sub>min</sub> = 0 (tous les bits à 0) et N<sub>max</sub> = 2<sup>${n}</sup> − 1 = ${2 ** n} − 1 = <b>${v}</b>
+          (tous les bits à 1).`
+  };
+}
+
+function qPass() {
+  const alph = pick([
+    ['chiffres (0 à 9)', 10],
+    ['lettres minuscules (a à z)', 26],
+    ['chiffres et lettres minuscules', 36],
+    ['chiffres, lettres minuscules et lettres majuscules', 62]
+  ]);
+  const k = rnd(3, 6);
+  const v = (BigInt(alph[1]) ** BigInt(k)).toString();
+  return {
+    type: 'dec',
+    text: `Calculer <b>N<sub>pass</sub></b>, le nombre de mots de passe possibles pour un mot de passe de
+           <b>${k} caractères</b>, chaque caractère pouvant être : ${alph[0]}.`,
+    ans: v, show: v,
+    exp: `Il y a ${alph[1]} choix possibles pour chacun des ${k} caractères :
+          N<sub>pass</sub> = ${alph[1]}<sup>${k}</sup> = <b>${v}</b>.`
+  };
+}
+
+function qAddr() {
+  const n = pick([6, 10, 12, 16, 20, 24, 32]);
+  const v = (2n ** BigInt(n)).toString();
+  const extra = n === 32 ? ' (c’est le format d’une adresse IPv4)' : '';
+  return {
+    type: 'dec',
+    text: `Une adresse est constituée de <b>${n} symboles exprimés en base 2</b>${extra}.
+           Combien peut-il y avoir d’adresses différentes ?`,
+    ans: v, show: v,
+    exp: `Chaque bit a 2 valeurs possibles : 2<sup>${n}</sup> = <b>${v}</b> adresses.`
+  };
+}
+
+function qUart() {
+  const n = rnd(1, 254), msb = toBin(n, 8), lsbFirst = msb.split('').reverse().join('');
+  const bits = [1, 0, ...lsbFirst.split('').map(Number), 1, 1];
+  const labels = ['Repos', 'Start', 'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'Stop', 'Repos'];
+  const w = 44, x0 = 16, yH = 24, yL = 70, H = 112;
+  const y = b => (b ? yH : yL);
+  let d = `M${x0},${y(bits[0])}`;
+  bits.forEach((b, i) => {
+    d += ` H${x0 + (i + 1) * w}`;
+    if (i < bits.length - 1) d += ` V${y(bits[i + 1])}`;
+  });
+  let grid = '', txt = '';
+  for (let i = 0; i <= bits.length; i++)
+    grid += `<line x1="${x0 + i * w}" y1="8" x2="${x0 + i * w}" y2="88" stroke="currentColor" stroke-opacity=".2" stroke-dasharray="3 3"/>`;
+  labels.forEach((l, i) => {
+    txt += `<text x="${x0 + i * w + w / 2}" y="104" font-size="11" text-anchor="middle" fill="currentColor">${l}</text>`;
+  });
+  const svg = `<div class="svgwrap"><svg viewBox="0 0 ${x0 * 2 + bits.length * w} ${H}" width="${x0 * 2 + bits.length * w}" role="img"
+      aria-label="Chronogramme d’une trame UART">${grid}
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>${txt}</svg></div>`;
+  return {
+    type: 'bin',
+    text: `Donner la valeur binaire sur 8 bits contenue dans cette trame UART
+           (format 8N1 : 1 bit de start, 8 bits de données, <b>bit de poids faible (D0) envoyé en premier</b>, 1 bit de stop).
+           Écrire l’octet avec le bit de poids fort à gauche.`,
+    vis: svg,
+    ans: msb, show: g4(msb),
+    exp: `Le niveau est à 1 au repos, le bit de start est à 0, puis on lit D0 → D7 :
+          ${lsbFirst.split('').join(' ')}.<br>
+          L’UART envoie le LSB en premier : il faut donc inverser l’ordre de lecture pour obtenir l’octet
+          (D7 … D0) = <b>${g4(msb)}</b> (soit ${n} en décimal, ${HEX[n >> 4]}${HEX[n & 15]} en hexadécimal).`
+  };
+}
+
+/* ---------- Normalisation / correction ---------- */
+function norm(type, s) {
+  s = String(s || '').replace(/[\s\u00a0\u202f._,'()]/g, '').replace(/^0x/i, '');
+  if (!s) return null;
+  if (type === 'dec') return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : null;
+  if (type === 'bin') return /^[01]+$/.test(s) ? s.replace(/^0+(?=[01])/, '') : null;
+  if (type === 'hex') return /^[0-9a-f]+$/i.test(s) ? s.toUpperCase().replace(/^0+(?=.)/, '') : null;
+  return null;
+}
+const placeholders = {
+  dec: 'Réponse en décimal',
+  bin: 'Réponse en binaire (ex. 1010 0110)',
+  hex: 'Réponse en hexadécimal (ex. 3F)'
+};
+
+/* ---------- Application ---------- */
+let questions = [];
+const $ = s => document.querySelector(s);
+
+function newTest() {
+  questions = [qBinToDec(), qHexToDec(), qDecToBin(), qBinToHex(), qDecToHex(),
+               qAddBin(), qNmax(), qPass(), qAddr(), qUart()];
+  $('#quiz').innerHTML = questions.map((q, i) => `
+    <div class="card">
+      <h2>Question ${i + 1} / 10</h2>
+      <p>${q.text}</p>
+      ${q.vis || ''}
+      <input type="text" id="r${i}" autocomplete="off" autocapitalize="off" spellcheck="false"
+             placeholder="${placeholders[q.type]}" aria-label="Réponse question ${i + 1}">
+    </div>`).join('');
+  $('#result').style.display = 'none';
+  $('#actions').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function submit() {
+  let score = 0, html = '';
+  questions.forEach((q, i) => {
+    const input = $('#r' + i);
+    input.disabled = true;
+    const raw = input.value.trim();
+    const u = norm(q.type, raw);
+    const ok = u !== null && u === norm(q.type, q.ans);
+    if (ok) score++;
+    html += `
+      <div class="card item ${ok ? 'ok' : 'ko'}">
+        <h2>Question ${i + 1}<span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Correct' : 'Incorrect'}</span></h2>
+        <p>${q.text}</p>
+        ${q.vis || ''}
+        <p>Votre réponse : <code>${raw ? raw.replace(/</g, '&lt;') : '(aucune)'}</code><br>
+           Réponse attendue : <b><code>${q.show}</code></b></p>
+        <div class="exp">${q.exp}</div>
+      </div>`;
+  });
+  $('#score').textContent = `Note : ${score} / 10`;
+  const comment = score === 10 ? 'Parfait, aucune erreur !'
+    : score >= 8 ? 'Très bien, quelques détails à revoir.'
+    : score >= 5 ? 'Correct, relisez le corrigé des questions ratées.'
+    : 'À retravailler : lisez le corrigé puis refaites un test.';
+  $('#comment').textContent = comment;
+  $('#corrige').innerHTML = html;
+  $('#result').style.display = 'block';
+  $('#actions').style.display = 'none';
+  $('#result').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#submit').addEventListener('click', submit);
+$('#restart').addEventListener('click', newTest);
+$('#restart2').addEventListener('click', newTest);
+newTest();
+</script>
+</body>
+</html>
