@@ -16,6 +16,12 @@ header{height:68px;background:var(--navy);color:white;display:flex;align-items:c
 .layout.sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
 .layout.sidebar-collapsed aside{display:none}
 aside{background:#fff;border-right:1px solid var(--line);padding:18px 14px;overflow:auto}
+.modes{display:flex;border:1px solid #cbd5e1;border-radius:9px;overflow:hidden;margin:0 0 8px}
+.modes button{flex:1;border:0;background:#fff;padding:8px 6px;font:inherit;font-size:13px;cursor:pointer;color:#334155}
+.modes button+button{border-left:1px solid #cbd5e1}
+.modes button.on{background:var(--blue);color:#fff;font-weight:650}
+.reload{width:100%;justify-content:center;margin:0 0 12px}
+.pickbox{display:grid;gap:10px}
 .search{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;margin:0 0 15px}
 .tree ul{list-style:none;margin:0;padding-left:15px}.tree>ul{padding-left:0}
 .tree li{margin:2px 0}.tree button{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;border-radius:7px;font:inherit;color:#334155;cursor:pointer;display:flex;gap:8px;align-items:center}
@@ -39,7 +45,7 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}h3{margin-top:25
 .content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
 main.wide iframe.document{height:80vh}
-.notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px}
+.notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .empty{color:var(--muted);padding:15px}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 @media(max-width:760px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);max-height:48vh}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}}
@@ -52,6 +58,12 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 </header>
 <div class="layout" id="layout">
 <aside id="sidebar">
+  <div class="modes" role="group" aria-label="Source des fichiers">
+    <button type="button" data-mode="online" title="Lit les fichiers publiés sur GitHub (API GitHub)">🌐 En ligne</button>
+    <button type="button" data-mode="local" title="Lit directement les fichiers de votre disque">💻 Local</button>
+  </div>
+  <button id="reload" class="btn reload" type="button">↻ Actualiser</button>
+  <input id="folderInput" type="file" webkitdirectory multiple hidden>
   <input id="search" class="search" type="search" placeholder="Rechercher un cours ou un fichier…" aria-label="Rechercher">
   <nav class="tree" id="tree" aria-label="Arborescence des cours"></nav>
 </aside>
@@ -63,7 +75,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
     <div class="tiles" id="tiles"></div>
     <h3>Comment naviguer ?</h3>
     <p>Cliquez sur un dossier pour déplier son contenu. Les fichiers PDF et texte s’affichent directement dans la page ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie. Le bouton <strong>☰ Menu</strong> en haut à gauche masque ou affiche l’arborescence.</p>
-    <div class="notice">Les dossiers et fichiers du dépôt sont détectés automatiquement. Ajoutez simplement vos documents dans GitHub : ils apparaîtront ici après actualisation du site.</div>
+    <div class="notice"><strong>Mode en ligne</strong> : les dossiers et fichiers publiés sur GitHub sont détectés automatiquement (actualisez le site après un ajout). <strong>Mode local</strong> : choisissez le dossier de votre site sur votre disque pour voir aussitôt vos fichiers, même s’ils ne sont pas encore envoyés sur GitHub.</div>
   </section>
   <section class="viewer" id="viewer" hidden>
     <h2 id="fileTitle"></h2>
@@ -75,16 +87,48 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-/* Détection automatique des dossiers et fichiers du dépôt GitHub.
-   Le dépôt doit être public. Pour un domaine personnalisé, renseignez repoOwner/repoName ci-dessous. */
-const repoOwner = "ccazaux";  // facultatif : propriétaire GitHub
-const repoName = "ccazaux.github.io"; // facultatif : nom du dépôt
+/* Deux modes :
+   - « En ligne » : détection des fichiers via l'API GitHub (le dépôt doit être public).
+   - « Local »    : lecture directe d'un dossier de votre disque (sélecteur de dossier du navigateur). */
+const repoOwner = "ccazaux";            // propriétaire GitHub
+const repoName = "ccazaux.github.io";   // nom du dépôt
 let courses = [];
 const $ = s => document.querySelector(s);
 const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",other:"📄"};
 const tree = $("#tree");
 const layout = $("#layout"), toggleBtn = $("#toggleNav");
+
+/* ---------- Mode (en ligne / local) ---------- */
+const isLocalEnv = location.protocol==="file:" || ["localhost","127.0.0.1","[::1]"].includes(location.hostname);
+let mode = (()=>{try{const m=localStorage.getItem("portalMode");if(m==="online"||m==="local")return m}catch(e){}return isLocalEnv?"local":"online"})();
+let dirHandle = null;                 // dossier choisi (API File System Access, Chrome/Edge)
+const localFiles = new Map();         // chemin relatif -> File
+const blobCache = new Map();          // chemin relatif -> URL blob
+const PICK_MSG = "Mode local : sélectionnez le dossier de votre site (celui qui contient vos matières). Les fichiers sont lus directement sur votre disque, rien n’est envoyé.";
+
 function setNav(open){layout.classList.toggle("sidebar-collapsed",!open);toggleBtn.setAttribute("aria-expanded",String(open));}
+function isHidden(p){return p.split("/").some(s=>s.startsWith(".")||s==="node_modules")}
+function urlOf(file){
+ if(mode==="local"&&localFiles.has(file.path)){
+  if(!blobCache.has(file.path))blobCache.set(file.path,URL.createObjectURL(localFiles.get(file.path)));
+  return blobCache.get(file.path);
+ }
+ return file.path;
+}
+function resetView(){
+ document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
+ $("#welcome").hidden=false;$("#viewer").hidden=true;$("#main").classList.remove("wide");
+ $("#breadcrumb").textContent="Accueil";$("#tiles").replaceChildren();$("#search").value="";
+}
+function updateModeButtons(){
+ document.querySelectorAll(".modes button").forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+}
+function setMode(m){
+ if(m===mode)return;
+ mode=m;try{localStorage.setItem("portalMode",m)}catch(e){}
+ updateModeButtons();resetView();initializePortal();
+}
+
 function allFiles(items,out=[]){items.forEach(x=>{if(x.type==="folder")allFiles(x.children,out);else out.push(x)});return out}
 function renderTree(items,parent,depth=0){
  const ul=document.createElement("ul");
@@ -108,8 +152,8 @@ function renderTree(items,parent,depth=0){
  parent.append(ul);return ul;
 }
 /* Lecture d'un fichier texte : UTF-8 en priorité, repli sur Windows-1252 (accents des anciens .txt) */
-async function fetchText(path){
- const r=await fetch(path);
+async function fetchText(url){
+ const r=await fetch(url);
  if(!r.ok)throw Error("Fichier introuvable");
  const buf=await r.arrayBuffer();
  try{return new TextDecoder("utf-8",{fatal:true}).decode(buf)}
@@ -120,33 +164,34 @@ function openFile(file,button){
  document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
  if(button)button.classList.add("active");
  $("#welcome").hidden=true;$("#viewer").hidden=false;
- $("#main").classList.toggle("wide",file.type==="pdf"||file.type==="text");
+ $("#main").classList.toggle("wide",["pdf","text","html"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  $("#breadcrumb").textContent=file.path;
+ const url=urlOf(file);
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
- const addLink=(label,download=false)=>{const a=document.createElement("a");a.className="btn";a.href=file.path;a.textContent=label;if(download)a.download="";else a.target="_blank";toolbar.append(a)};
+ const addLink=(label,download=false)=>{const a=document.createElement("a");a.className="btn";a.href=url;a.textContent=label;if(download)a.download=file.name;else a.target="_blank";toolbar.append(a)};
  if(file.type==="markdown"){
   addLink("↗ Ouvrir le fichier brut");
   addLink("⬇ Télécharger le Markdown",true);
   content.textContent="Chargement du cours…";
-  fetch(file.path).then(r=>{if(!r.ok)throw Error("Fichier introuvable");return r.text()})
+  fetchText(url)
    .then(md=>{if(window.marked){content.innerHTML=marked.parse(md);}else{content.textContent=md;}})
    .catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce cours. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else if(file.type==="text"){
   addLink("↗ Ouvrir le fichier brut");
   addLink("⬇ Télécharger le fichier texte",true);
   content.textContent="Chargement du document…";
-  fetchText(file.path).then(txt=>{
+  fetchText(url).then(txt=>{
    const pre=document.createElement("pre");pre.className="txt";pre.textContent=txt;
    content.replaceChildren(pre);
   }).catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else if(file.type==="pdf"){
   addLink("⬇ Télécharger le PDF",true);
   addLink("↗ Ouvrir dans un nouvel onglet");
-  const frame=document.createElement("iframe");frame.className="document";frame.src=file.path;frame.title=file.name;content.append(frame);
+  const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;content.append(frame);
  }else if(file.type==="html"){
   addLink("↗ Ouvrir la démonstration dans un nouvel onglet");
-  const frame=document.createElement("iframe");frame.className="document";frame.src=file.path;frame.title=file.name;
+  const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;
   frame.setAttribute("sandbox","allow-scripts allow-forms allow-downloads allow-modals");
   content.append(frame);
  }else{addLink("⬇ Télécharger le fichier",true)}
@@ -166,7 +211,7 @@ function fileType(path){
 function buildTree(paths){
  const root={children:new Map()};
  for(const path of paths){
-  if(!path || path.startsWith('.') || path==='index.html' || path.toLowerCase()==='readme.md')continue;
+  if(!path || isHidden(path) || path==='index.html' || path.toLowerCase()==='readme.md')continue;
   const parts=path.split('/'); let node=root;
   parts.forEach((part,i)=>{
    if(!node.children.has(part))node.children.set(part,{name:part,children:new Map(),path:null});
@@ -185,6 +230,8 @@ function buildTree(paths){
  }
  return convert(root);
 }
+
+/* ---------- Mode en ligne : API GitHub ---------- */
 async function discoverRepositoryFiles(){
  const host=location.hostname;
  const owner=repoOwner || host.split('.')[0];
@@ -202,24 +249,89 @@ async function discoverRepositoryFiles(){
  if(data.truncated)throw new Error('Le dépôt contient trop de fichiers pour une lecture complète via l’API GitHub.');
  return (data.tree||[]).filter(x=>x.type==='blob').map(x=>x.path);
 }
+
+/* ---------- Mode local : dossier du disque ---------- */
+async function scanDir(handle,prefix="",out=[]){
+ for await(const [name,h] of handle.entries()){
+  if(isHidden(name))continue;                       // ignore .git, node_modules…
+  if(h.kind==="directory")await scanDir(h,prefix+name+"/",out);
+  else out.push([prefix+name,await h.getFile()]);
+ }
+ return out;
+}
+function showTree(paths,emptyMsg){
+ courses=buildTree(paths);
+ tree.replaceChildren();
+ if(!courses.length){tree.textContent=emptyMsg;return false}
+ renderTree(courses,tree);makeTiles();return true;
+}
+function applyLocalFiles(entries){
+ blobCache.forEach(u=>URL.revokeObjectURL(u));blobCache.clear();localFiles.clear();
+ entries.forEach(([p,f])=>{if(p&&!isHidden(p))localFiles.set(p,f)});
+ $("#tiles").replaceChildren();
+ showTree([...localFiles.keys()],"Aucun document trouvé dans ce dossier.");
+}
+async function loadFromHandle(){
+ tree.replaceChildren();
+ const s=document.createElement("p");s.className="notice";s.textContent="Lecture du dossier local…";tree.append(s);
+ try{applyLocalFiles(await scanDir(dirHandle))}
+ catch(e){showPicker("Impossible de lire le dossier local. Choisissez-le à nouveau.")}
+}
+async function chooseFolder(){
+ if(window.showDirectoryPicker){
+  try{dirHandle=await showDirectoryPicker({mode:"read"})}
+  catch(e){if(e&&e.name==="AbortError")return;dirHandle=null;$("#folderInput").click();return}
+  await loadFromHandle();
+ }else $("#folderInput").click();
+}
+$("#folderInput").addEventListener("change",e=>{
+ const files=[...e.target.files];e.target.value="";
+ if(!files.length)return;
+ dirHandle=null;
+ applyLocalFiles(files.map(f=>{const parts=(f.webkitRelativePath||f.name).split("/");parts.shift();return [parts.join("/"),f]}));
+});
+function showPicker(msg){
+ tree.replaceChildren();
+ const box=document.createElement("div");box.className="pickbox";
+ const p=document.createElement("p");p.className="notice";p.textContent=msg;
+ const b=document.createElement("button");b.type="button";b.className="btn primary";b.textContent="📂 Choisir le dossier du site";
+ b.addEventListener("click",chooseFolder);
+ box.append(p,b);tree.append(box);
+}
+
+/* ---------- Initialisation ---------- */
 async function initializePortal(){
+ if(mode==="local"){
+  if(dirHandle)await loadFromHandle();
+  else if(localFiles.size)applyLocalFiles([...localFiles.entries()]);
+  else showPicker(PICK_MSG);
+  return;
+ }
+ tree.replaceChildren();
  const status=document.createElement('p');status.className='notice';status.textContent='Détection des dossiers et fichiers du dépôt…';tree.append(status);
  try{
   const paths=await discoverRepositoryFiles();
-  courses=buildTree(paths);
-  tree.replaceChildren();
-  if(!courses.length){tree.textContent='Aucun document trouvé dans les sous-dossiers du dépôt.';return;}
-  renderTree(courses,tree);
-  makeTiles();
+  if(mode!=="online")return;                         // changement de mode pendant le chargement
+  if(!showTree(paths,'Aucun document trouvé dans les sous-dossiers du dépôt.'))return;
  }catch(error){
   status.textContent=error.message+' Vous pouvez aussi vérifier les paramètres du dépôt dans index.html.';
  }
 }
 function makeTiles(){
- const tiles=$("#tiles");
+ const tiles=$("#tiles");tiles.replaceChildren();
  courses.forEach((c,i)=>{const b=document.createElement("button");b.className="tile";b.innerHTML=`<span>📁 MATIÈRE ${i+1}</span><strong></strong><span>Explorer les ressources →</span>`;b.querySelector("strong").textContent=c.name.replace(/^\d+\s*-\s*/,"");b.onclick=()=>{const first=allFiles([c])[0];if(first)openFile(first,null);};tiles.append(b);});
 }
-initializePortal();
+
+document.querySelectorAll(".modes button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+$("#reload").addEventListener("click",async()=>{
+ if(mode==="local"){
+  if(dirHandle){
+   try{if(await dirHandle.requestPermission({mode:"read"})!=="granted")throw 0}
+   catch(e){resetView();showPicker(PICK_MSG);return}
+   resetView();await loadFromHandle();
+  }else{resetView();showPicker(PICK_MSG)}
+ }else{resetView();initializePortal()}
+});
 $("#search").addEventListener("input",e=>{
  const q=e.target.value.trim().toLocaleLowerCase("fr");
  document.querySelectorAll("#tree li").forEach(li=>li.style.display="");
@@ -231,6 +343,8 @@ $("#search").addEventListener("input",e=>{
  });
 });
 toggleBtn.addEventListener("click",()=>setNav(layout.classList.contains("sidebar-collapsed")));
+updateModeButtons();
+initializePortal();
 </script>
 </body>
 </html>
