@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loi d’Ohm – Simulation interactive</title>
+<style>
+  :root { --bg:#fff; --fg:#1d2733; --card:#f3f6fa; --accent:#1769aa; --border:#d5dde6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181d; --fg:#e6ebf0; --card:#1d242c; --accent:#6db3f2; --border:#2f3a45; }
+  }
+  html, body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui, sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:1rem 1.25rem 2rem; }
+  h1 { font-size:1.5rem; margin:.5rem 0 1rem; }
+  .demo { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#000; }
+  .demo iframe { display:block; width:100%; height:620px; border:0; }
+  .note { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.75rem 1rem; margin-top:1rem; line-height:1.5; }
+  a { color:var(--accent); }
+  code { background:var(--card); padding:0 .3em; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Loi d’Ohm : U = R × I</h1>
+
+  <div class="demo">
+    <iframe
+      src="https://www.falstad.com/circuit/circuitjs.html?startCircuit=ohms.txt&hideMenu=true"
+      title="Simulation de la loi d’Ohm (Falstad)"
+      loading="lazy"
+      allowfullscreen></iframe>
+  </div>
+
+  <div class="note">
+    <p><strong>Lecture :</strong> le vert indique une tension positive, le gris la masse. Les points jaunes en mouvement représentent le courant (sens conventionnel). Le curseur « Voltage » à droite permet de faire varier la tension.</p>
+    <p>La résistance de droite vaut 10 fois celle de gauche : le courant qui la traverse est 10 fois plus faible, car <code>I = U / R</code>.</p>
+    <p>Si la simulation ne s’affiche pas, ouvrez-la directement sur
+      <a href="https://www.falstad.com/circuit/e-ohms.html" target="_blank" rel="noopener">le site de Paul Falstad</a>.</p>
+  </div>
+</main>
+</body>
+</html>

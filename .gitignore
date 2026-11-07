@@ -1,0 +1,9 @@
+# --- Fichiers cachés ---
+# Ignore tous les fichiers et dossiers qui commencent par un point
+.*
+# Sauf le fichier .gitignore lui-même pour qu'il soit bien partagé
+!.gitignore
+
+# --- Dossiers spécifiques à la racine ---
+# Ignore le dossier "encours" situé uniquement à la racine et tout son contenu
+/encours/
