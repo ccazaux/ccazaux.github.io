@@ -45,6 +45,7 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}h3{margin-top:25
 .content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
 main.wide iframe.document{height:80vh}
+main.wide iframe.document.falstad{height:85vh;min-height:600px}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .empty{color:var(--muted);padding:15px}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
@@ -71,7 +72,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
   <div class="breadcrumb" id="breadcrumb">Accueil</div>
   <section class="welcome" id="welcome">
     <h2>Bienvenue dans vos cours</h2>
-    <p class="lead">Choisissez une matière dans l’arborescence à gauche. Vous pourrez consulter les cours, lancer les démonstrations interactives et ouvrir ou télécharger les documents PDF et texte.</p>
+    <p class="lead">Choisissez une matière dans l’arborescence à gauche. Vous pourrez consulter les cours, lancer les démonstrations et circuits Falstad, et ouvrir ou télécharger les documents PDF et texte.</p>
     <div class="tiles" id="tiles"></div>
     <h3>Comment naviguer ?</h3>
     <p>Cliquez sur un dossier pour déplier son contenu. Les fichiers PDF et texte s’affichent directement dans la page ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie. Le bouton <strong>☰ Menu</strong> en haut à gauche masque ou affiche l’arborescence.</p>
@@ -86,6 +87,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script>
 /* Deux modes :
    - « En ligne » : détection des fichiers via l'API GitHub (le dépôt doit être public).
@@ -94,7 +96,7 @@ const repoOwner = "ccazaux";            // propriétaire GitHub
 const repoName = "ccazaux.github.io";   // nom du dépôt
 let courses = [];
 const $ = s => document.querySelector(s);
-const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",other:"📄"};
+const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",falstad:"⚡",other:"📄"};
 const tree = $("#tree");
 const layout = $("#layout"), toggleBtn = $("#toggleNav");
 
@@ -160,14 +162,28 @@ async function fetchText(url){
  catch(e){return new TextDecoder("windows-1252").decode(buf)}
 }
 
+let openToken=0;
+/* Droits des iframes de démonstration (même origine que le portail ou falstad.com) */
+function applyFrameRights(frame){
+ frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-downloads allow-modals");
+ frame.setAttribute("allow","fullscreen; clipboard-read; clipboard-write");
+ frame.setAttribute("allowfullscreen","");
+}
+/* Construit l'URL Falstad (circuitjs) à partir du texte d'un fichier .falstad */
+function falstadUrl(txt){
+ const base="https://www.falstad.com/circuit/circuitjs.html";
+ txt=txt.replace(/\r\n?/g,"\n");
+ if(window.LZString)return base+"?ctz="+LZString.compressToEncodedURIComponent(txt);
+ return base+"?cct="+encodeURIComponent(txt);
+}
 function openFile(file,button){
  document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
  if(button)button.classList.add("active");
  $("#welcome").hidden=true;$("#viewer").hidden=false;
- $("#main").classList.toggle("wide",["pdf","text","html"].includes(file.type));
+ $("#main").classList.toggle("wide",["pdf","text","html","falstad"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  $("#breadcrumb").textContent=file.path;
- const url=urlOf(file);
+ const url=urlOf(file);const token=++openToken;
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
  const addLink=(label,download=false)=>{const a=document.createElement("a");a.className="btn";a.href=url;a.textContent=label;if(download)a.download=file.name;else a.target="_blank";toolbar.append(a)};
  if(file.type==="markdown"){
@@ -192,8 +208,19 @@ function openFile(file,button){
  }else if(file.type==="html"){
   addLink("↗ Ouvrir la démonstration dans un nouvel onglet");
   const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;
-  frame.setAttribute("sandbox","allow-scripts allow-forms allow-downloads allow-modals");
+  applyFrameRights(frame);
   content.append(frame);
+ }else if(file.type==="falstad"){
+  addLink("⬇ Télécharger le fichier .falstad",true);
+  content.textContent="Chargement du circuit…";
+  fetchText(url).then(txt=>{
+   if(token!==openToken)return;                     // un autre fichier a été ouvert entre-temps
+   const src=falstadUrl(txt);
+   const a=document.createElement("a");a.className="btn";a.href=src;a.target="_blank";a.rel="noopener";a.textContent="↗ Ouvrir dans Falstad (nouvel onglet)";toolbar.append(a);
+   const frame=document.createElement("iframe");frame.className="document falstad";frame.src=src;frame.title=file.name;
+   applyFrameRights(frame);
+   content.replaceChildren(frame);
+  }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce circuit. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else{addLink("⬇ Télécharger le fichier",true)}
  if(innerWidth<=760)setNav(false);
 }
@@ -206,6 +233,7 @@ function fileType(path){
  if(ext==='html'||ext==='htm')return 'html';
  if(ext==='pdf')return 'pdf';
  if(ext==='txt')return 'text';
+ if(ext==='falstad')return 'falstad';
  return 'other';
 }
 function buildTree(paths){
