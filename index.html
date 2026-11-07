@@ -10,16 +10,20 @@
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#243247;background:var(--bg)}
 header{height:68px;background:var(--navy);color:white;display:flex;align-items:center;padding:0 22px;gap:13px;box-shadow:0 2px 8px #10203330}
 .logo{font-size:25px}header h1{font-size:19px;margin:0;font-weight:700}header small{display:block;color:#c6d5e7;font-size:12px}
+.menu-btn{background:#ffffff1f;color:#fff;border:1px solid #ffffff40;border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer;flex:none}
+.menu-btn:hover{background:#ffffff33}
 .layout{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 68px)}
+.layout.sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
+.layout.sidebar-collapsed aside{display:none}
 aside{background:#fff;border-right:1px solid var(--line);padding:18px 14px;overflow:auto}
 .search{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;margin:0 0 15px}
-.tree-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700;padding:4px 9px 9px}
 .tree ul{list-style:none;margin:0;padding-left:15px}.tree>ul{padding-left:0}
 .tree li{margin:2px 0}.tree button{width:100%;border:0;background:transparent;text-align:left;padding:8px 9px;border-radius:7px;font:inherit;color:#334155;cursor:pointer;display:flex;gap:8px;align-items:center}
 .tree button:hover{background:#f1f5f9}.tree button.active{background:var(--active);color:#174f8c;font-weight:650}
 .tree .children{padding-left:17px;border-left:1px solid var(--line);margin-left:16px}
 .tree .hidden{display:none}.ico{width:20px;text-align:center;flex:none}.label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.tag{font-size:10px;color:var(--muted);background:#f1f5f9;border-radius:5px;padding:2px 5px}
 main{padding:28px clamp(18px,4vw,54px);min-width:0;max-width:1150px;width:100%;margin:0 auto}
+main.wide{max-width:none;margin:0}
 .breadcrumb{font-size:12px;color:var(--muted);margin-bottom:14px}
 .welcome,.viewer{background:white;border:1px solid var(--line);border-radius:14px;padding:clamp(20px,4vw,38px);box-shadow:0 4px 18px #1e293b08}
 h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}h3{margin-top:25px;color:#172b46}
@@ -31,32 +35,34 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}h3{margin-top:25
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#24415f;text-decoration:none;font:inherit;font-size:13px;cursor:pointer}
 .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
 .content{overflow-wrap:anywhere}.content img{max-width:100%;height:auto}.content pre{overflow:auto;background:#f1f5f9;padding:14px;border-radius:8px}.content code{background:#f1f5f9;padding:2px 4px;border-radius:4px}.content pre code{background:transparent;padding:0}
+.content pre.txt{white-space:pre-wrap;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;width:100%;margin:0}
 .content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
+main.wide iframe.document{height:80vh}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px}
 .empty{color:var(--muted);padding:15px}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
-.mobilebar{display:none}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.mobilebar{display:flex;background:#fff;border-bottom:1px solid var(--line);padding:9px 14px}.mobilebar button{border:1px solid var(--line);border-radius:7px;background:white;padding:7px 10px}.sidebar-collapsed aside{display:none}aside{border-right:0;border-bottom:1px solid var(--line);max-height:48vh}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);max-height:48vh}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}}
 </style>
 </head>
 <body>
-<header><div class="logo">📚</div><div><h1>Mes cours</h1><small>Portail pédagogique</small></div></header>
-<div class="mobilebar"><button id="toggleNav" type="button">☰ Afficher / masquer les matières</button></div>
+<header>
+  <button id="toggleNav" class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="true" title="Masquer / afficher le menu">☰ <span>Menu</span></button>
+  <div class="logo">📚</div><div><h1>Mes cours</h1><small>Portail pédagogique</small></div>
+</header>
 <div class="layout" id="layout">
-<aside>
+<aside id="sidebar">
   <input id="search" class="search" type="search" placeholder="Rechercher un cours ou un fichier…" aria-label="Rechercher">
-  <div class="tree-title">Bibliothèque</div>
   <nav class="tree" id="tree" aria-label="Arborescence des cours"></nav>
 </aside>
-<main>
+<main id="main">
   <div class="breadcrumb" id="breadcrumb">Accueil</div>
   <section class="welcome" id="welcome">
     <h2>Bienvenue dans vos cours</h2>
-    <p class="lead">Choisissez une matière dans l’arborescence à gauche. Vous pourrez consulter les cours, lancer les démonstrations interactives et ouvrir ou télécharger les documents PDF.</p>
+    <p class="lead">Choisissez une matière dans l’arborescence à gauche. Vous pourrez consulter les cours, lancer les démonstrations interactives et ouvrir ou télécharger les documents PDF et texte.</p>
     <div class="tiles" id="tiles"></div>
     <h3>Comment naviguer ?</h3>
-    <p>Les dossiers <strong>TP</strong> et <strong>TD</strong> se déplient dans le menu. Les fichiers PDF s’ouvrent dans le lecteur du navigateur ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie.</p>
+    <p>Cliquez sur un dossier pour déplier son contenu. Les fichiers PDF et texte s’affichent directement dans la page ; le bouton <strong>Télécharger</strong> permet d’enregistrer une copie. Le bouton <strong>☰ Menu</strong> en haut à gauche masque ou affiche l’arborescence.</p>
     <div class="notice">Les dossiers et fichiers du dépôt sont détectés automatiquement. Ajoutez simplement vos documents dans GitHub : ils apparaîtront ici après actualisation du site.</div>
   </section>
   <section class="viewer" id="viewer" hidden>
@@ -71,12 +77,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 <script>
 /* Détection automatique des dossiers et fichiers du dépôt GitHub.
    Le dépôt doit être public. Pour un domaine personnalisé, renseignez repoOwner/repoName ci-dessous. */
-const repoOwner = ""; // facultatif : propriétaire GitHub
-const repoName = "";  // facultatif : nom du dépôt
+const repoOwner = "ccazaux";  // facultatif : propriétaire GitHub
+const repoName = "ccazaux.github.io"; // facultatif : nom du dépôt
 let courses = [];
 const $ = s => document.querySelector(s);
-const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",other:"📄"};
+const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",other:"📄"};
 const tree = $("#tree");
+const layout = $("#layout"), toggleBtn = $("#toggleNav");
+function setNav(open){layout.classList.toggle("sidebar-collapsed",!open);toggleBtn.setAttribute("aria-expanded",String(open));}
 function allFiles(items,out=[]){items.forEach(x=>{if(x.type==="folder")allFiles(x.children,out);else out.push(x)});return out}
 function renderTree(items,parent,depth=0){
  const ul=document.createElement("ul");
@@ -87,7 +95,7 @@ function renderTree(items,parent,depth=0){
   btn.innerHTML=`<span class="ico">${icons[item.type]||"📄"}</span><span class="label"></span>${item.type==="folder"?"<span class='tag'>dossier</span>":""}`;
   btn.querySelector(".label").textContent=item.name;
   if(item.type==="folder"){
-   const child=renderTree(item.children,li,depth+1);child.className="children";
+   const child=renderTree(item.children,li,depth+1);child.className="children hidden"; /* repliés par défaut */
    btn.setAttribute("aria-expanded","false");
    btn.addEventListener("click",()=>{const open=!child.classList.contains("hidden");child.classList.toggle("hidden",open);btn.setAttribute("aria-expanded",String(!open));});
    li.append(btn,child);
@@ -99,11 +107,20 @@ function renderTree(items,parent,depth=0){
  });
  parent.append(ul);return ul;
 }
+/* Lecture d'un fichier texte : UTF-8 en priorité, repli sur Windows-1252 (accents des anciens .txt) */
+async function fetchText(path){
+ const r=await fetch(path);
+ if(!r.ok)throw Error("Fichier introuvable");
+ const buf=await r.arrayBuffer();
+ try{return new TextDecoder("utf-8",{fatal:true}).decode(buf)}
+ catch(e){return new TextDecoder("windows-1252").decode(buf)}
+}
 
 function openFile(file,button){
  document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
  if(button)button.classList.add("active");
  $("#welcome").hidden=true;$("#viewer").hidden=false;
+ $("#main").classList.toggle("wide",file.type==="pdf"||file.type==="text");
  $("#fileTitle").textContent=file.name;
  $("#breadcrumb").textContent=file.path;
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
@@ -115,6 +132,14 @@ function openFile(file,button){
   fetch(file.path).then(r=>{if(!r.ok)throw Error("Fichier introuvable");return r.text()})
    .then(md=>{if(window.marked){content.innerHTML=marked.parse(md);}else{content.textContent=md;}})
    .catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce cours. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="text"){
+  addLink("↗ Ouvrir le fichier brut");
+  addLink("⬇ Télécharger le fichier texte",true);
+  content.textContent="Chargement du document…";
+  fetchText(file.path).then(txt=>{
+   const pre=document.createElement("pre");pre.className="txt";pre.textContent=txt;
+   content.replaceChildren(pre);
+  }).catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else if(file.type==="pdf"){
   addLink("⬇ Télécharger le PDF",true);
   addLink("↗ Ouvrir dans un nouvel onglet");
@@ -125,7 +150,7 @@ function openFile(file,button){
   frame.setAttribute("sandbox","allow-scripts allow-forms allow-downloads allow-modals");
   content.append(frame);
  }else{addLink("⬇ Télécharger le fichier",true)}
- if(innerWidth<=760)$("#layout").classList.add("sidebar-collapsed");
+ if(innerWidth<=760)setNav(false);
 }
 function prettyName(segment){
  return segment.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toLocaleUpperCase('fr'));
@@ -135,6 +160,7 @@ function fileType(path){
  if(ext==='md'||ext==='markdown')return 'markdown';
  if(ext==='html'||ext==='htm')return 'html';
  if(ext==='pdf')return 'pdf';
+ if(ext==='txt')return 'text';
  return 'other';
 }
 function buildTree(paths){
@@ -204,7 +230,7 @@ $("#search").addEventListener("input",e=>{
   else if(btn.parentElement.querySelector("ul")===null)btn.parentElement.style.display="none";
  });
 });
-$("#toggleNav").addEventListener("click",()=>$("#layout").classList.toggle("sidebar-collapsed"));
+toggleBtn.addEventListener("click",()=>setNav(layout.classList.contains("sidebar-collapsed")));
 </script>
 </body>
 </html>
