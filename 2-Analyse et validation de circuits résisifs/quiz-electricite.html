@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz – Fondamentaux d’électricité</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5d6678; --border:#d9dde5;
+  --accent:#2457d6; --volt:#d9730d; --ok:#1a8f4c; --okbg:#e6f6ec; --ko:#c62828; --kobg:#fdeaea; --code:#eef1f6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171d; --card:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --border:#333a47;
+    --accent:#6c9bff; --volt:#ffa94d; --ok:#4cc27f; --okbg:#173325; --ko:#ff7b7b; --kobg:#3a1c1c; --code:#262c37;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:.95rem;margin:0 0 8px;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
+.card p{margin:0 0 8px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin:6px 0;cursor:pointer}
+.opt:hover{border-color:var(--accent)}
+.opt input{margin-top:5px}
+.num{display:inline-flex;align-items:center;gap:8px;margin:4px 14px 4px 0}
+input[type=text]{width:90px;padding:7px 9px;font:inherit;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--accent)}
+.svgwrap{overflow-x:auto;margin:6px 0}
+svg{max-width:100%;height:auto;color:var(--text)}
+#result{display:none}
+.score{font-size:2rem;font-weight:700;margin:0}
+.item{border-left:5px solid var(--border)}
+.item.ok{border-left-color:var(--ok)}
+.item.ko{border-left-color:var(--ko)}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.8rem;margin-left:8px;text-transform:none;letter-spacing:0}
+.badge.ok{background:var(--okbg);color:var(--ok)}
+.badge.ko{background:var(--kobg);color:var(--ko)}
+ul.ol{list-style:none;padding:0;margin:6px 0}
+ul.ol li{padding:5px 10px;border-radius:6px;margin:4px 0;border:1px solid var(--border)}
+ul.ol li.good{background:var(--okbg);border-color:var(--ok)}
+ul.ol li.bad{background:var(--kobg);border-color:var(--ko)}
+.exp{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:.95rem}
+.hint{font-size:.85rem;color:var(--muted)}
+table.res{border-collapse:collapse;margin:6px 0}
+table.res td,table.res th{border:1px solid var(--border);padding:4px 10px;text-align:left}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ahI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)" stroke="none"/></marker>
+  <marker id="ahU" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="var(--volt)" stroke="none"/></marker>
+</defs></svg>
+
+<main>
+  <h1>Quiz : fondamentaux d’électricité</h1>
+  <p class="sub">10 questions, une note sur 10, corrigé détaillé à la fin. Les valeurs changent à chaque nouveau test.
+  <span class="hint">Flèches bleues : courants · flèches orange : tensions.</span></p>
+
+  <div id="quiz"></div>
+
+  <div class="btns" id="actions">
+    <button type="button" id="submit">Valider et voir ma note</button>
+    <button type="button" class="sec" id="restart">Nouveau test</button>
+  </div>
+
+  <div id="result">
+    <div class="card"><p class="score" id="score"></p><p id="comment"></p></div>
+    <h2 style="margin:18px 0 10px">Corrigé</h2>
+    <div id="corrige"></div>
+    <div class="btns"><button type="button" id="restart2">Refaire un test avec d’autres valeurs</button></div>
+  </div>
+</main>
+
+<script>
+/* ---------- Outils ---------- */
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[rnd(0, arr.length - 1)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fr = x => String(Math.round(x * 1000) / 1000).replace('.', ',');
+const fmtI = x => x < 1 ? `${Math.round(x * 1000)} mA` : `${fr(x)} A`;
+const fmtV = x => `${x < 0 ? '−' : ''}${fr(Math.abs(x))} V`;
+const $ = s => document.querySelector(s);
+
+function buildOpts(correct, cands, n = 4) {
+  const seen = new Set([correct]), d = [];
+  for (const c of shuffle(cands)) if (!seen.has(c)) { seen.add(c); d.push(c); }
+  return shuffle([correct, ...d.slice(0, n - 1)]).map(t => ({ label: t, correct: t === correct }));
+}
+
+/* ---------- Dessin SVG ---------- */
+const svg = (W, H, inner) => `<div class="svgwrap"><svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Schéma du circuit"
+  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></div>`;
+const ln = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+const tx = (x, y, t, anchor = 'middle', size = 13) =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" fill="currentColor" stroke="none">${t}</text>`;
+const rbox = (cx, cy, w, h, inside) =>
+  `<rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" fill="var(--card)"/>` +
+  (inside ? tx(cx, cy + 4, inside, 'middle', 12) : '');
+const dot = (x, y) => `<circle cx="${x}" cy="${y}" r="4" fill="currentColor" stroke="none"/>`;
+const term = (x, y) => `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--card)"/>`;
+const arrow = (x1, y1, x2, y2, k) =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${k === 'U' ? 'var(--volt)' : 'var(--accent)'}" marker-end="url(#ah${k})"/>`;
+
+function dgParallel3(items) {
+  const ys = [35, 85, 135];
+  let s = ln(60, 35, 60, 135) + ln(260, 35, 260, 135) + ln(20, 85, 60, 85) + ln(260, 85, 300, 85) +
+          term(20, 85) + term(300, 85) + dot(60, 85) + dot(260, 85) + tx(20, 72, 'A') + tx(300, 72, 'B');
+  items.forEach((it, i) => {
+    const y = ys[i];
+    if (it.zero) s += ln(60, y, 260, y) + tx(160, y - 8, `${it.name} = 0 Ω`);
+    else s += ln(60, y, 136, y) + ln(184, y, 260, y) + rbox(160, y, 48, 20) + tx(160, y - 16, `${it.name} = ${it.val}`);
+  });
+  return svg(320, 165, s);
+}
+
+function dgSeries3(items) {
+  const xs = [90, 180, 270];
+  let s = ln(10, 40, 66, 40) + ln(114, 40, 156, 40) + ln(204, 40, 246, 40) + ln(294, 40, 350, 40) + term(10, 40) + term(350, 40);
+  items.forEach((it, i) => { s += rbox(xs[i], 40, 48, 20) + tx(xs[i], 24, `${it.name} = ${it.val}`); });
+  s += tx(10, 62, 'A', 'middle') + tx(350, 62, 'B', 'middle');
+  return svg(360, 70, s);
+}
+
+function dgNodeOhm() {
+  let s = ln(30, 95, 76, 95) + ln(124, 95, 170, 95) + rbox(100, 95, 48, 20, 'R1') + term(30, 95) + dot(170, 95) +
+          tx(30, 78, 'A') + tx(158, 88, 'B', 'end');
+  s += ln(170, 95, 170, 45) + ln(170, 45, 226, 45) + ln(274, 45, 330, 45) + rbox(250, 45, 48, 20, 'R2');
+  s += ln(170, 95, 170, 145) + ln(170, 145, 226, 145) + ln(274, 145, 330, 145) + rbox(250, 145, 48, 20, 'R3');
+  s += `<line x1="330" y1="45" x2="330" y2="145" stroke-dasharray="5 5"/>` + tx(342, 100, '…', 'start');
+  s += arrow(40, 95, 70, 95, 'I') + tx(55, 84, 'I1');
+  s += arrow(180, 45, 215, 45, 'I') + tx(197, 34, 'I2');
+  s += arrow(180, 145, 215, 145, 'I') + tx(197, 134, 'I3');
+  s += `<line x1="30" y1="95" x2="30" y2="182" stroke-dasharray="3 4" stroke-opacity=".5"/>
+        <line x1="170" y1="145" x2="170" y2="182" stroke-dasharray="3 4" stroke-opacity=".5"/>`;
+  s += arrow(170, 180, 30, 180, 'U') + tx(100, 198, 'UAB');
+  return svg(360, 205, s);
+}
+
+function dgNode() {
+  const N = [150, 100];
+  const ins = [['I1', [30, 40]], ['I3', [30, 160]]];
+  const outs = [['I2', [270, 40]], ['I4', [270, 100]], ['I5', [270, 160]]];
+  let s = '';
+  ins.concat(outs).forEach(([, p]) => { s += ln(p[0], p[1], N[0], N[1]); });
+  const L = (p, t) => [p[0] + (N[0] - p[0]) * t, p[1] + (N[1] - p[1]) * t];
+  const O = (p, t) => [N[0] + (p[0] - N[0]) * t, N[1] + (p[1] - N[1]) * t];
+  ins.forEach(([n, p]) => {
+    const a = L(p, .25), b = L(p, .6);
+    s += arrow(a[0], a[1], b[0], b[1], 'I') + tx((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 10, n);
+  });
+  outs.forEach(([n, p]) => {
+    const a = O(p, .35), b = O(p, .7);
+    s += arrow(a[0], a[1], b[0], b[1], 'I') + tx((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 10, n);
+  });
+  s += dot(N[0], N[1]);
+  return svg(300, 200, s);
+}
+
+function dgBranches(k) {
+  const cy = 105, ys = k === 3 ? [35, 105, 175] : [25, 75, 135, 185];
+  const kinds = ['gen', 'res', 'res', 'lamp'], labels = ['G', 'R1', 'R2', 'L'];
+  let s = '';
+  ys.forEach((y, i) => {
+    const hw = kinds[i] === 'res' ? 24 : 16;
+    s += `<path d="M40,${cy} L90,${y} H${180 - hw}"/><path d="M${180 + hw},${y} H270 L320,${cy}"/>`;
+    if (kinds[i] === 'res') s += rbox(180, y, 48, 20, labels[i]);
+    else if (kinds[i] === 'gen') s += `<circle cx="180" cy="${y}" r="16" fill="var(--card)"/>` + tx(180, y + 4, 'G', 'middle', 12);
+    else s += `<circle cx="180" cy="${y}" r="16" fill="var(--card)"/>` + ln(169, y - 11, 191, y + 11) + ln(169, y + 11, 191, y - 11);
+  });
+  s += dot(40, cy) + dot(320, cy) + tx(40, cy - 12, 'A') + tx(320, cy - 12, 'B');
+  return svg(360, 210, s);
+}
+
+function dgLoop() {
+  let s = '';
+  s += ln(60, 50, 114, 50) + ln(206, 50, 260, 50);                       // haut
+  s += rbox(160, 50, 56, 22, 'R1');
+  s += ln(260, 50, 260, 72) + ln(260, 128, 260, 170);                     // droite
+  s += rbox(260, 100, 24, 56) + tx(260, 104, 'R2', 'middle', 12);
+  s += ln(60, 170, 144, 170) + ln(176, 170, 260, 170);                    // bas
+  s += `<circle cx="160" cy="170" r="16" fill="var(--card)"/>` + ln(149, 159, 171, 181) + ln(149, 181, 171, 159) + tx(160, 148, 'L', 'middle', 12);
+  s += ln(60, 50, 60, 84) + ln(60, 116, 60, 170);                         // gauche
+  s += `<circle cx="60" cy="100" r="16" fill="var(--card)"/>` + tx(60, 104, 'G1', 'middle', 12);
+  s += arrow(22, 125, 22, 75, 'U') + tx(16, 104, 'UG1', 'end');
+  s += arrow(200, 24, 120, 24, 'U') + tx(160, 16, 'U1');
+  s += arrow(298, 128, 298, 72, 'U') + tx(306, 104, 'U2', 'start');
+  s += arrow(120, 200, 200, 200, 'U') + tx(160, 216, 'UL');
+  s += tx(160, 105, 'Sens de parcours : ↻', 'middle', 12);
+  return svg(340, 225, s);
+}
+
+/* ---------- Questions ---------- */
+function q1() {
+  const v = rnd(0, 2);
+  if (v === 0) {
+    const [a, b] = pick([[1, 2], [2, 3], [1, 3], [2, 4]]);
+    const z = rnd(0, 2), vals = [`${a} kΩ`, `${b} kΩ`];
+    const items = [0, 1, 2].map(i => i === z ? { name: 'R' + (i + 1), zero: true } : { name: 'R' + (i + 1), val: vals.shift() });
+    const par = Math.round((a * b / (a + b)) * 1000);
+    const c = 'Une résistance nulle';
+    return {
+      topic: 'Résistance équivalente', kind: 'mcq',
+      text: 'Quelle est la valeur de la résistance équivalente entre A et B ?', vis: dgParallel3(items),
+      options: buildOpts(c, [`${a + b} kΩ`, `≈ ${par} Ω`, 'On ne peut pas savoir', 'Une résistance infinie'], 4),
+      exp: `Il suffit d’une résistance nulle en parallèle pour que l’ensemble soit équivalent à une résistance nulle :
+            c’est le principe du court-circuit (le courant passe tout entier par le fil, aucune tension aux bornes).`
+    };
+  }
+  if (v === 1) {
+    const a = rnd(1, 4), b = rnd(1, 4), c = rnd(1, 4), sum = a + b + c;
+    const p = Math.round(1000 / (1 / a + 1 / b + 1 / c));
+    const cor = `${sum} kΩ`;
+    return {
+      topic: 'Résistance équivalente', kind: 'mcq',
+      text: 'Quelle est la valeur de la résistance équivalente entre A et B ?',
+      vis: dgSeries3([{ name: 'R1', val: `${a} kΩ` }, { name: 'R2', val: `${b} kΩ` }, { name: 'R3', val: `${c} kΩ` }]),
+      options: buildOpts(cor, [`≈ ${p} Ω`, `${a * b * c} kΩ`, 'Une résistance nulle', `${Math.max(a, b, c)} kΩ`, 'On ne peut pas savoir'], 4),
+      exp: `Des résistances en série s’ajoutent : Req = R1 + R2 + R3 = ${a} + ${b} + ${c} = <b>${sum} kΩ</b>.`
+    };
+  }
+  const R = pick([30, 60, 90, 150]), r = R / 3, cor = `${r} Ω`;
+  return {
+    topic: 'Résistance équivalente', kind: 'mcq',
+    text: `Trois résistances identiques de ${R} Ω sont montées en parallèle. Quelle est la résistance équivalente ?`,
+    vis: dgParallel3([1, 2, 3].map(i => ({ name: 'R' + i, val: `${R} Ω` }))),
+    options: buildOpts(cor, [`${3 * R} Ω`, `${R} Ω`, `${R / 2} Ω`, '0 Ω'], 4),
+    exp: `Pour n résistances identiques en parallèle : Req = R / n = ${R} / 3 = <b>${r} Ω</b>.`
+  };
+}
+
+function q2() {
+  const i2 = pick([1, 2, 3]), i3 = pick([1, 2, 4]), R = pick([1, 2]), i1 = i2 + i3, U = R * i1;
+  const cor = `${U} V`;
+  return {
+    topic: 'Loi des nœuds et loi d’Ohm', kind: 'mcq',
+    text: `Soit I2 = ${i2} mA, I3 = ${i3} mA et R1 = ${R} kΩ. Calculer U<sub>AB</sub>.`, vis: dgNodeOhm(),
+    options: buildOpts(cor, [`${U} mV`, `${R * i2} V`, `${R * i3} V`, `${R * Math.abs(i3 - i2)} V`, `${U} kV`], 4),
+    exp: `On calcule I1 avec la loi des nœuds en B : I1 = I2 + I3 = ${i2} + ${i3} = ${i1} mA.<br>
+          Puis loi d’Ohm : U<sub>AB</sub> = R1 × I1 = ${R} kΩ × ${i1} mA = <b>${U} V</b> (kΩ × mA = V).`
+  };
+}
+
+function q3() {
+  const [a, b] = pick([[20, 20], [30, 30], [10, 10], [40, 40], [30, 60], [20, 60], [60, 60]]);
+  const r = a * b / (a + b), cor = `${fr(r)} Ω`;
+  return {
+    topic: 'Résistances en parallèle', kind: 'mcq',
+    text: `Soit deux résistances R1 = ${a} Ω et R2 = ${b} Ω. Quelle est la résistance équivalente aux deux résistances en parallèle ?`,
+    options: buildOpts(cor, [`${a + b} Ω`, `${a * b} Ω`, `${Math.min(a, b)} Ω`, `${Math.max(a, b)} Ω`, '0 Ω'], 5),
+    exp: `Req = R1 × R2 / (R1 + R2) = ${a} × ${b} / (${a} + ${b}) = ${a * b} / ${a + b} = <b>${fr(r)} Ω</b>.<br>
+          (La résistance équivalente en parallèle est toujours plus petite que la plus petite des résistances.)`
+  };
+}
+
+function q4() {
+  let i1, i2, i3, i5, i4;
+  do { i1 = pick([1, 2, 3]); i3 = pick([1, 2, 3]); i2 = pick([1, 2]); i5 = pick([0.5, 1]); i4 = i1 + i3 - i2 - i5; } while (i4 <= 0);
+  const cor = fmtI(i4);
+  const wrong = t => t.endsWith(' mA') ? t.replace(/ mA$/, ' A') : t.replace(/ A$/, ' mA');
+  return {
+    topic: 'Loi des nœuds', kind: 'mcq',
+    text: `I1 = ${fmtI(i1)}, I2 = ${fmtI(i2)}, I3 = ${fmtI(i3)}, I5 = ${fmtI(i5)}. Quelle est la valeur de I4 ?`, vis: dgNode(),
+    options: buildOpts(cor, [wrong(cor), fmtI(Math.abs(i1 + i3 - i2 + i5)), fmtI(i1 + i3 + i2 + i5), fmtI(i2 + i5), fmtI(Math.abs(i1 - i3))], 4),
+    exp: `Loi des nœuds : somme des courants qui arrivent = somme des courants qui repartent.<br>
+          I1 + I3 = I2 + I4 + I5, donc I4 = I1 + I3 − I2 − I5.<br>
+          A.N : I4 = ${fr(i1)} + ${fr(i3)} − ${fr(i2)} − ${fr(i5)} = <b>${fr(i4)} A</b>${i4 < 1 ? ` = ${fmtI(i4)}` : ''}.`
+  };
+}
+
+function q5() {
+  const a = pick([6, 8, 10, 12]), b = pick([3, 4, 5]), c = pick([-2, -3, 2]), U = a + b + c;
+  const cor = fmtV(U);
+  return {
+    topic: 'Loi d’addition des tensions', kind: 'mcq',
+    text: `Soit un montage électrique où U<sub>AB</sub> = ${fmtV(a)}, U<sub>BC</sub> = ${fmtV(b)} et U<sub>CD</sub> = ${fmtV(c)}. Que vaut U<sub>AD</sub> ?`,
+    options: buildOpts(cor, [fmtV(a + b), fmtV(a + b - c), fmtV(a - b + c), fmtV(a), 'On ne peut pas savoir'], 5),
+    exp: `D’après la loi d’addition des tensions : U<sub>AD</sub> = U<sub>AB</sub> + U<sub>BC</sub> + U<sub>CD</sub>.<br>
+          A.N : U<sub>AD</sub> = ${a} + ${b} ${c < 0 ? '−' : '+'} ${Math.abs(c)} = <b>${fmtV(U)}</b>.`
+  };
+}
+
+function q6() {
+  const R = pick([10, 20, 50, 100]), I = pick([2, 3, 4, 5]), U = R * I, cor = `${U} V`;
+  return {
+    topic: 'Loi d’Ohm', kind: 'mcq',
+    text: `Une résistance de ${R} Ω est parcourue par un courant de ${I} A. Quelle est la tension à ses bornes ?`,
+    options: buildOpts(cor, [`${U} A`, `${fr(R / I)} V`, `${fr(I / R)} V`, `${R + I} V`], 4),
+    exp: `Il faut appliquer la loi d’Ohm : U = R × I = ${R} × ${I} = <b>${U} V</b>.<br>La tension s’exprime en volts (V), le courant en ampères (A).`
+  };
+}
+
+function q7() {
+  const R = pick([10, 20, 50, 100]), U = pick([5, 10, 20, 50]), I = U / R, cor = fmtI(I);
+  const toV = t => t.replace(/A$/, 'V');
+  return {
+    topic: 'Loi d’Ohm', kind: 'mcq',
+    text: `Une résistance de ${R} Ω est soumise à une tension de ${U} V. Quel courant la traverse ?`,
+    options: buildOpts(cor, [toV(cor), fmtI(U * R), toV(fmtI(U * R)), fmtI(R / U)], 4),
+    exp: `U = R × I, donc I = U / R.<br>Ici, I = ${U} / ${R} = ${fr(I)} A${I < 1 ? ` = <b>${fmtI(I)}</b>` : ''}.`
+  };
+}
+
+function q8() {
+  if (Math.random() < 0.5) {
+    const a = pick([2, 3, 4, 5]), cor = 'On ne peut pas savoir';
+    const opts = [0, a, 2 * a, 3 * a, 4 * a].map(x => ({ label: fmtV(x), correct: false }));
+    opts.push({ label: cor, correct: true });
+    return {
+      topic: 'Loi d’addition des tensions', kind: 'mcq',
+      text: `Soit un montage électrique où U<sub>AC</sub> = ${fmtV(a)}, U<sub>CD</sub> = ${fmtV(a)}, U<sub>AD</sub> = ${fmtV(2 * a)} et U<sub>EB</sub> = ${fmtV(a)}. Que vaut U<sub>AB</sub> ?`,
+      options: opts,
+      exp: `Il n’y a aucun moyen de connaître le résultat avec les données énoncées. En particulier, on ne dispose pas de suffisamment
+            de données pour appliquer la loi d’addition des tensions : aucune des tensions connues ne relie A à B
+            (U<sub>EB</sub> fait intervenir le point E, sans lien connu avec A).`
+    };
+  }
+  let a, b;
+  do { a = rnd(2, 6); b = rnd(1, 4); } while (a === b);
+  const U = a + b, cor = fmtV(U);
+  const vals = [...new Set([a, b, U, Math.abs(a - b), a + 2 * b])].sort((x, y) => x - y);
+  const opts = vals.map(x => ({ label: fmtV(x), correct: x === U }));
+  opts.push({ label: 'On ne peut pas savoir', correct: false });
+  return {
+    topic: 'Loi d’addition des tensions', kind: 'mcq',
+    text: `Soit un montage électrique où U<sub>AC</sub> = ${fmtV(a)}, U<sub>CB</sub> = ${fmtV(b)} et U<sub>EB</sub> = ${fmtV(rnd(2, 6))}. Que vaut U<sub>AB</sub> ?`,
+    options: opts,
+    exp: `D’après la loi d’addition des tensions : U<sub>AB</sub> = U<sub>AC</sub> + U<sub>CB</sub> = ${a} + ${b} = <b>${fmtV(U)}</b>.<br>
+          La tension U<sub>EB</sub> n’intervient pas dans ce calcul.`
+  };
+}
+
+function q9() {
+  const k = pick([3, 4]), m = k * (k - 1) / 2;
+  return {
+    topic: 'Mailles, nœuds et branches', kind: 'nums',
+    text: `Donner le nombre de mailles, de nœuds et de branches du circuit.<br>
+           <span class="hint">Rappels : une branche relie deux nœuds ; un nœud est un point où se rejoignent au moins trois conducteurs ;
+           une maille est un contour fermé formé de branches, chacune n’étant parcourue qu’une seule fois.</span>`,
+    vis: dgBranches(k),
+    fields: [{ label: 'Nombre de mailles', ans: m }, { label: 'Nombre de nœuds', ans: 2 }, { label: 'Nombre de branches', ans: k }],
+    exp: `Il y a 2 nœuds (A et B) et ${k} branches qui les relient. Une maille se forme avec deux branches quelconques :
+          il y en a donc ${k} × ${k - 1} / 2 = <b>${m}</b>.<br>Réponses attendues : <b>${m} mailles, 2 nœuds, ${k} branches</b>.`
+  };
+}
+
+function q10() {
+  const names = ['UG1', 'U1', 'U2', 'UL'], base = [1, -1, -1, -1];
+  const fmt = (order, sg) => order.map((n, k) => {
+    const s = sg[n];
+    return k === 0 ? (s < 0 ? '− ' : '') + names[n] : (s < 0 ? ' − ' : ' + ') + names[n];
+  }).join('') + ' = 0';
+  const nCor = rnd(2, 3), cor = new Set();
+  while (cor.size < nCor) cor.add(fmt(shuffle([0, 1, 2, 3]), Math.random() < .5 ? base : base.map(x => -x)));
+  const bad = shuffle([[1, 1, 1, 1], ...base.map((_, f) => base.map((x, i) => i === f ? -x : x))]);
+  const wrong = new Set();
+  for (const sg of bad) { if (wrong.size >= 5 - nCor) break; wrong.add(fmt(shuffle([0, 1, 2, 3]), sg)); }
+  const options = shuffle([...cor].map(l => ({ label: l, correct: true })).concat([...wrong].map(l => ({ label: l, correct: false }))));
+  return {
+    topic: 'Loi des mailles', kind: 'multi',
+    text: 'Parmi ces propositions, lesquelles sont justes ? <span class="hint">(plusieurs réponses possibles)</span>', vis: dgLoop(), options,
+    exp: `On parcourt la maille dans le sens de la flèche de U<sub>G1</sub> : une tension fléchée dans le sens du parcours compte <b>+</b>,
+          dans le sens contraire elle compte <b>−</b>. On obtient U<sub>G1</sub> − U1 − U2 − U<sub>L</sub> = 0.<br>
+          La loi des mailles peut produire plusieurs équations différentes mais équivalentes, suivant le point de départ et le sens de
+          parcours (ordre des termes différent, ou tous les signes changés). Attention toutefois à bien l’appliquer, et en particulier
+          au signe : une équation dont les signes ne sont pas cohérents est fausse.`
+  };
+}
+
+/* ---------- Application ---------- */
+let questions = [];
+const normNum = s => { s = String(s || '').replace(/\s/g, ''); return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : null; };
+
+function newTest() {
+  questions = [q1(), q2(), q3(), q4(), q5(), q6(), q7(), q8(), q9(), q10()];
+  $('#quiz').innerHTML = questions.map((q, i) => {
+    let body;
+    if (q.kind === 'nums') {
+      body = q.fields.map((f, j) => `<label class="num">${f.label} <input type="text" inputmode="numeric" id="q${i}_${j}" autocomplete="off"></label>`).join('');
+    } else {
+      const t = q.kind === 'mcq' ? 'radio' : 'checkbox';
+      body = q.options.map((o, j) => `<label class="opt"><input type="${t}" name="q${i}" value="${j}"><span>${o.label}</span></label>`).join('');
+    }
+    return `<div class="card"><h2>Question ${i + 1} / 10 · ${q.topic}</h2><p>${q.text}</p>${q.vis || ''}${body}</div>`;
+  }).join('');
+  $('#result').style.display = 'none';
+  $('#actions').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function grade(q, i) {
+  if (q.kind === 'nums') {
+    const vals = q.fields.map((f, j) => normNum($(`#q${i}_${j}`).value));
+    return { ok: q.fields.every((f, j) => vals[j] === String(f.ans)), vals };
+  }
+  const sel = new Set([...document.querySelectorAll(`input[name=q${i}]:checked`)].map(e => +e.value));
+  return { ok: q.options.every((o, j) => o.correct === sel.has(j)), sel };
+}
+
+function submit() {
+  let score = 0, html = '';
+  questions.forEach((q, i) => {
+    const g = grade(q, i);
+    document.querySelectorAll(`#quiz .card:nth-child(${i + 1}) input`).forEach(e => e.disabled = true);
+    if (g.ok) score++;
+    let detail;
+    if (q.kind === 'nums') {
+      detail = `<table class="res"><tr><th></th><th>Votre réponse</th><th>Attendu</th></tr>` +
+        q.fields.map((f, j) => `<tr><td>${f.label}</td><td>${g.vals[j] ?? '(aucune)'}</td><td><b>${f.ans}</b></td></tr>`).join('') + `</table>`;
+    } else {
+      detail = `<ul class="ol">` + q.options.map((o, j) => {
+        const chosen = g.sel.has(j);
+        const cls = o.correct ? 'good' : (chosen ? 'bad' : '');
+        const mark = o.correct ? '✓ ' : (chosen ? '✗ ' : '');
+        return `<li class="${cls}">${mark}${o.label}${chosen ? ' <i>(votre réponse)</i>' : ''}</li>`;
+      }).join('') + `</ul>`;
+      if (!g.sel.size) detail += `<p class="hint">Aucune réponse donnée.</p>`;
+    }
+    html += `<div class="card item ${g.ok ? 'ok' : 'ko'}">
+      <h2>Question ${i + 1} · ${q.topic}<span class="badge ${g.ok ? 'ok' : 'ko'}">${g.ok ? 'Correct' : 'Incorrect'}</span></h2>
+      <p>${q.text}</p>${q.vis || ''}${detail}<div class="exp">${q.exp}</div></div>`;
+  });
+  $('#score').textContent = `Note : ${score} / 10`;
+  $('#comment').textContent = score === 10 ? 'Parfait, aucune erreur !'
+    : score >= 8 ? 'Très bien, quelques détails à revoir.'
+    : score >= 5 ? 'Correct, relisez le corrigé des questions ratées.'
+    : 'À retravailler : lisez le corrigé puis refaites un test.';
+  $('#corrige').innerHTML = html;
+  $('#result').style.display = 'block';
+  $('#actions').style.display = 'none';
+  $('#result').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#submit').addEventListener('click', submit);
+$('#restart').addEventListener('click', newTest);
+$('#restart2').addEventListener('click', newTest);
+newTest();
+</script>
+</body>
+</html>
