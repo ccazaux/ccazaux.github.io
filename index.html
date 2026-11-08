@@ -28,8 +28,12 @@ aside{background:#fff;padding:18px 10px;overflow:auto;min-width:0}
 .tree ul{list-style:none;margin:0;padding-left:0}
 .tree li{margin:1px 0}.tree button{width:100%;border:0;background:transparent;text-align:left;padding:6px 7px;border-radius:7px;font:inherit;color:#334155;cursor:pointer;display:flex;gap:6px;align-items:center}
 .tree button:hover{background:#f1f5f9}.tree button.active{background:var(--active);color:#174f8c;font-weight:650}
-.tree .children{padding-left:6px;border-left:1px solid var(--line);margin-left:11px}
-.tree .hidden{display:none}.ico{width:18px;text-align:center;flex:none}.label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.ico{width:18px;text-align:center;flex:none}.txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree button:focus-visible{background:#f1f5f9;outline:2px solid #8bb4e2;outline-offset:-2px}
+.tree .parentbtn{color:#174f8c;font-weight:600}
+.navhead{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:8px 7px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 main{padding:28px clamp(18px,4vw,54px);min-width:0;max-width:1150px;width:100%;margin:0 auto}
 main.wide{max-width:none;margin:0}
 .breadcrumb{font-size:12px;color:var(--muted);margin-bottom:14px}
@@ -49,14 +53,6 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
 main.wide iframe.document{height:80vh}
 main.wide iframe.document.falstad{height:85vh;min-height:600px}
-.odf-doc{font:11pt/1.45 Arial,Helvetica,sans-serif;color:#000;overflow-wrap:break-word}
-.odf-doc p{margin:0 0 .5em}.odf-doc li>p{margin:0}
-.odf-doc table,.odp-inner table{border-collapse:collapse;width:auto}
-.odf-doc td,.odf-doc th,.odp-inner td,.odp-inner th{border:0;padding:2px 5px;vertical-align:top}
-.odp-cap{font-size:12px;color:var(--muted);margin:16px 0 6px}.odp-cap:first-child{margin-top:0}
-.odp-wrap{position:relative;overflow:hidden;box-shadow:0 2px 12px #0003;background:#fff}
-.odp-inner{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;font:18pt/1.2 Arial,Helvetica,sans-serif;color:#000}
-.odp-inner p{margin:0}.odp-inner ul,.odp-inner ol{margin:0;padding-left:1.1em}.odp-inner ul ul,.odp-inner ol ol{font-size:.85em}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .ctxmenu{position:fixed;z-index:100;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px #0f172a30;padding:4px;min-width:210px}
 .ctxmenu button{display:block;width:100%;border:0;background:transparent;text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#243247}
@@ -134,11 +130,12 @@ function urlOf(file){
  }
  return file.path;
 }
+function showWelcome(){
+ $("#welcome").hidden=false;$("#viewer").hidden=true;$("#main").classList.remove("wide");$("#breadcrumb").hidden=true;
+}
 function resetView(){
- stopOdf();
- document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
- $("#welcome").hidden=false;$("#viewer").hidden=true;$("#main").classList.remove("wide");
- $("#breadcrumb").hidden=true;$("#search").value="";
+ activePath=null;query="";$("#search").value="";
+ showWelcome();
 }
 function updateModeButtons(){
  document.querySelectorAll(".modes button").forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
@@ -159,28 +156,58 @@ async function onModeClick(m){
 }
 
 function allFiles(items,out=[]){items.forEach(x=>{if(x.type==="folder")allFiles(x.children,out);else out.push(x)});return out}
-function renderTree(items,parent){
- const ul=document.createElement("ul");
- items.forEach(item=>{
-  const li=document.createElement("li");
-  const btn=document.createElement("button");
-  btn.type="button";
-  btn.innerHTML=`<span class="ico">${icons[item.type]||"📄"}</span><span class="label"></span>`;
-  btn.querySelector(".label").textContent=item.name;
-  btn.title=item.name;
-  btn.addEventListener("contextmenu",e=>showMenu(e,item));
-  if(item.type==="folder"){
-   const child=renderTree(item.children,li);child.className="children hidden"; /* repliés par défaut */
-   btn.setAttribute("aria-expanded","false");
-   btn.addEventListener("click",()=>{const open=!child.classList.contains("hidden");child.classList.toggle("hidden",open);btn.setAttribute("aria-expanded",String(!open));openFolder(item,btn);});
-   li.append(btn,child);
-  }else{
-   btn.addEventListener("click",()=>openFile(item,btn));
-   li.append(btn);
+/* ---------- Navigation dans le menu : un seul dossier affiché à la fois ---------- */
+let rootItem=null,cur=null,activePath=null,query="";
+const pathIndex=new Map();
+function indexTree(){
+ pathIndex.clear();
+ rootItem={name:"",type:"folder",path:"",children:courses,parent:null};
+ const walk=(it,parent)=>{it.parent=parent;pathIndex.set((it.type==="folder"?"d:":"f:")+it.path,it);if(it.type==="folder")it.children.forEach(c=>walk(c,it))};
+ courses.forEach(c=>walk(c,rootItem));
+ cur=rootItem;
+}
+function navBtn(item,sub){
+ const li=document.createElement("li"),btn=document.createElement("button");
+ btn.type="button";btn._item=item;btn.title=item.name;
+ btn.innerHTML=`<span class="ico">${icons[item.type]||"📄"}</span><span class="txt"><span class="label"></span>${sub?'<span class="sub"></span>':""}</span>`;
+ btn.querySelector(".label").textContent=item.name;
+ if(sub)btn.querySelector(".sub").textContent=sub;
+ if(item.type!=="folder"&&item.path===activePath)btn.classList.add("active");
+ btn.addEventListener("click",e=>item.type==="folder"?openFolder(item,e.detail===0?"first":null):openFile(item));
+ btn.addEventListener("contextmenu",e=>showMenu(e,item));
+ li.append(btn);return li;
+}
+function renderNav(focus){
+ tree.replaceChildren();
+ const q=query.trim().toLocaleLowerCase("fr"),ul=document.createElement("ul");
+ if(q){                                             // recherche dans tout le site
+  const hits=[];
+  (function walk(it){it.children.forEach(c=>{if(c.name.toLocaleLowerCase("fr").includes(q))hits.push(c);if(c.type==="folder")walk(c)})})(rootItem);
+  if(!hits.length){tree.textContent="Aucun résultat.";return}
+  hits.forEach(h=>ul.append(navBtn(h,h.parent&&h.parent!==rootItem?h.parent.path:"")));
+ }else{
+  if(cur!==rootItem){
+   const li=document.createElement("li"),b=document.createElement("button");
+   b.type="button";b.className="parentbtn";
+   b.innerHTML='<span class="ico">⬆</span><span class="txt"><span class="label">Dossier parent</span></span>';
+   b.addEventListener("click",e=>openFolder(cur.parent,e.detail===0?cur:null));
+   li.append(b);ul.append(li);
+   const h=document.createElement("li");h.className="navhead";h.textContent=cur.name;h.title=cur.path;ul.append(h);
   }
-  ul.append(li);
- });
- parent.append(ul);return ul;
+  cur.children.forEach(c=>ul.append(navBtn(c)));
+ }
+ tree.append(ul);
+ if(focus){
+  const bs=[...tree.querySelectorAll("button")];
+  const t=focus==="first"?(cur!==rootItem&&bs[1]?bs[1]:bs[0]):bs.find(b=>b._item===focus);
+  if(t)t.focus();
+ }
+}
+function applyHash(){
+ let p="";try{p=decodeURIComponent(location.hash.slice(1))}catch(e){}
+ if(!p)return;
+ const d=pathIndex.get("d:"+p),f=pathIndex.get("f:"+p);
+ if(d)openFolder(d);else if(f){openFolder(f.parent);openFile(f)}
 }
 /* Lecture d'un fichier texte : UTF-8 en priorité, repli sur Windows-1252 (accents des anciens .txt) */
 async function fetchText(url){
@@ -231,16 +258,25 @@ async function downloadFolder(item,statusEl){
 }
 
 /* ---------- Menu contextuel (clic droit dans l'arborescence) ---------- */
+function openInNewTab(item){
+ if(item.type==="folder"){window.open(location.href.split("#")[0]+"#"+encodeURIComponent(item.path),"_blank");return}
+ if(item.type==="falstad"){
+  const w=window.open("about:blank","_blank");
+  fetchText(urlOf(item)).then(t=>{if(w)w.location.href=falstadUrl(t,true)}).catch(()=>{if(w)w.close()});
+  return;
+ }
+ window.open(urlOf(item),"_blank");
+}
 function hideMenu(){const m=$("#ctxmenu");if(m)m.remove()}
 function showMenu(e,item){
  e.preventDefault();hideMenu();
  const m=document.createElement("div");m.id="ctxmenu";m.className="ctxmenu";
  const add=(label,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=()=>{hideMenu();fn()};m.append(b)};
  if(item.type==="folder"){
-  add("📂 Ouvrir",()=>openFolder(item,null));
-  add("⬇ Télécharger tout le dossier (.zip)",()=>downloadFolder(item,null));
+  if(mode==="online")add("↗ Ouvrir dans un nouvel onglet",()=>openInNewTab(item));
+  add("⬇ Télécharger le dossier (.zip)",()=>downloadFolder(item,null));
  }else{
-  add("↗ Ouvrir",()=>openFile(item,null));
+  add("↗ Ouvrir dans un nouvel onglet",()=>openInNewTab(item));
   add("⬇ Télécharger le fichier",()=>downloadFile(item));
  }
  document.body.append(m);
@@ -253,241 +289,6 @@ addEventListener("keydown",e=>{if(e.key==="Escape")hideMenu()});
 addEventListener("resize",hideMenu);
 $("#sidebar").addEventListener("scroll",hideMenu);
 
-/* ---------- Lecture des fichiers .odt / .odp (décodage ODF dans le navigateur) ---------- */
-const PX=37.795;                                   // 1 cm en pixels CSS
-const ODF_MIME={png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",svg:"image/svg+xml",webp:"image/webp",bmp:"image/bmp"};
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let odfObserver=null;
-function stopOdf(){if(odfObserver){odfObserver.disconnect();odfObserver=null}}
-function cm(v,def=0){
- if(v==null||v==="")return def;
- const m=/^(-?[\d.]+)\s*(cm|mm|in|pt|pc|px)?/.exec(v);if(!m)return def;
- const n=parseFloat(m[1]),k={cm:1,mm:.1,in:2.54,pt:2.54/72,pc:2.54/6,px:2.54/96}[m[2]||"cm"];
- return n*k;
-}
-function odfStyles(docs){
- const raw=new Map(),lists=new Map(),cache=new Map();
- docs.forEach(d=>{
-  for(const st of d.getElementsByTagName("style:style"))raw.set(st.getAttribute("style:family")+":"+st.getAttribute("style:name"),st);
-  for(const ls of d.getElementsByTagName("text:list-style")){const f=ls.children[0];lists.set(ls.getAttribute("style:name"),!!f&&f.nodeName==="text:list-level-style-number")}
- });
- function sty(family,name,own=false,depth=0){
-  if(!name||depth>8)return {};
-  const key=family+":"+name+(own?"!":"");
-  if(cache.has(key))return cache.get(key);
-  const st=raw.get(family+":"+name);let o={};
-  if(st){
-   if(!own)o={...sty(family,st.getAttribute("style:parent-style-name"),false,depth+1)};
-   for(const el of st.children){
-    const n=el.nodeName,g=x=>el.getAttribute(x);
-    if(n==="style:text-properties"){
-     if(g("fo:font-weight"))o["font-weight"]=g("fo:font-weight");
-     if(g("fo:font-style"))o["font-style"]=g("fo:font-style");
-     if(g("style:text-underline-style"))o._u=g("style:text-underline-style")!=="none";
-     if(g("style:text-line-through-style"))o._s=g("style:text-line-through-style")!=="none";
-     if(g("fo:color"))o.color=g("fo:color");
-     if(g("fo:background-color"))o["background-color"]=g("fo:background-color");
-     if(g("fo:font-size"))o["font-size"]=g("fo:font-size");
-     const ff=g("fo:font-family")||g("style:font-name");
-     if(ff)o["font-family"]=`'${ff.replace(/['"]/g,"")}',Arial,sans-serif`;
-     const tp=g("style:text-position");
-     if(tp){const v=tp.split(" ")[0];
-      if(v.startsWith("super")||parseFloat(v)>0){o["vertical-align"]="super";o["font-size"]="75%"}
-      else if(v.startsWith("sub")||parseFloat(v)<0){o["vertical-align"]="sub";o["font-size"]="75%"}}
-    }else if(n==="style:paragraph-properties"){
-     const ta=g("fo:text-align");
-     if(ta)o["text-align"]={start:"left",end:"right",left:"left",right:"right",center:"center",justify:"justify"}[ta]||"left";
-     for(const k of ["margin-left","margin-right","margin-top","margin-bottom","text-indent","line-height"]){const v=g("fo:"+k);if(v)o[k]=v}
-     if(g("fo:background-color"))o["background-color"]=g("fo:background-color");
-    }else if(n==="style:graphic-properties"||n==="style:drawing-page-properties"){
-     const fill=g("draw:fill");
-     if(fill==="none")o["background-color"]="transparent";
-     else if(fill==="solid"&&g("draw:fill-color"))o["background-color"]=g("draw:fill-color");
-     if(g("draw:stroke"))o._sd=g("draw:stroke");
-     if(g("svg:stroke-color"))o._sc=g("svg:stroke-color");
-     if(g("svg:stroke-width"))o._sw=g("svg:stroke-width");
-     for(const k of ["padding","padding-left","padding-right","padding-top","padding-bottom"]){const v=g("fo:"+k);if(v)o[k]=v}
-     if(g("draw:textarea-vertical-align"))o._va=g("draw:textarea-vertical-align");
-    }else if(n==="style:table-cell-properties"){
-     if(g("fo:background-color"))o["background-color"]=g("fo:background-color");
-     for(const k of ["border","border-left","border-right","border-top","border-bottom","padding"]){const v=g("fo:"+k);if(v)o[k]=v}
-     const va=g("style:vertical-align");if(va)o["vertical-align"]=va==="automatic"?"top":va;
-    }else if(n==="style:table-column-properties"){
-     if(g("style:column-width"))o._cw=g("style:column-width");
-    }else if(n==="style:table-properties"){
-     const w=g("style:rel-width")||g("style:width");if(w)o.width=w;
-    }
-   }
-  }
-  cache.set(key,o);return o;
- }
- return {sty,lists};
-}
-function toCss(o){
- let s="";for(const k in o)if(k[0]!=="_")s+=`${k}:${o[k]};`;
- const d=[o._u&&"underline",o._s&&"line-through"].filter(Boolean);
- if(d.length)s+="text-decoration:"+d.join(" ")+";";
- return s;
-}
-const ODF_SKIP=new Set(["office:forms","text:sequence-decls","text:variable-decls","text:user-field-decls","text:tracked-changes","office:annotation","text:bookmark","text:bookmark-start","text:bookmark-end","text:soft-page-break","text:table-of-content-source","text:alphabetical-index-source","text:illustration-index-source","text:table-index-source","text:bibliography-source","text:user-index-source","text:object-index-source","svg:title","svg:desc","draw:object","draw:object-ole","draw:plugin","draw:image","style:style"]);
-function odfHtml(node,ctx){
- let h="";
- for(const ch of node.childNodes){
-  if(ch.nodeType===3)h+=esc(ch.nodeValue.replace(/\s+/g," "));
-  else if(ch.nodeType===1)h+=odfEl(ch,ctx);
- }
- return h;
-}
-function odfImg(el,ctx){
- const im=[...el.children].find(c=>c.nodeName==="draw:image");
- const src=im&&ctx.imgs.get((im.getAttribute("xlink:href")||"").replace(/^\.\//,""));
- return src?`<img src="${src}" style="width:100%;height:100%;display:block">`:"";
-}
-function odfEl(el,ctx){
- const n=el.nodeName,a=x=>el.getAttribute(x),S=(f,nm)=>esc(toCss(ctx.sty(f,nm)));
- if(ODF_SKIP.has(n))return "";
- switch(n){
-  case "text:p":{const t=ctx.inline?"div":"p";return `<${t} style="${S("paragraph",a("text:style-name"))}">${odfHtml(el,ctx)||"&nbsp;"}</${t}>`}
-  case "text:h":{const l=Math.min(Math.max(parseInt(a("text:outline-level"))||1,1),6);return `<h${l} style="${S("paragraph",a("text:style-name"))}">${odfHtml(el,ctx)}</h${l}>`}
-  case "text:span":return `<span style="${S("text",a("text:style-name"))}">${odfHtml(el,ctx)}</span>`;
-  case "text:a":{const h=a("xlink:href")||"";return `<a href="${esc(/^(https?:|mailto:)/i.test(h)?h:"#")}" target="_blank" rel="noopener">${odfHtml(el,ctx)}</a>`}
-  case "text:s":return "&nbsp;".repeat(Math.min(parseInt(a("text:c"))||1,200));
-  case "text:tab":return '<span style="display:inline-block;width:2em"></span>';
-  case "text:line-break":return "<br>";
-  case "text:note":{const c=[...el.children].find(x=>x.nodeName==="text:note-citation");return c?`<sup>${esc(c.textContent)}</sup>`:""}
-  case "text:list":{
-   const prev=ctx.cur,s=a("text:style-name")||prev;ctx.cur=s;
-   const tag=ctx.lists.get(s)?"ol":"ul";
-   const out=`<${tag}>${[...el.children].map(c=>odfEl(c,ctx)).join("")}</${tag}>`;
-   ctx.cur=prev;return out;
-  }
-  case "text:list-item":case "text:list-header":return `<li>${odfHtml(el,ctx)}</li>`;
-  case "table:table":{
-   const cols=[],rows=[];
-   const walk=p=>{for(const c of p.children){const nm=c.nodeName;
-    if(nm==="table:table-column")cols.push(c);
-    else if(nm==="table:table-row")rows.push(c);
-    else if(["table:table-columns","table:table-header-columns","table:table-header-rows","table:table-row-group","table:table-rows"].includes(nm))walk(c)}};
-   walk(el);
-   let h=`<table style="${S("table",a("table:style-name"))}"><colgroup>`;
-   cols.forEach(c=>{const w=ctx.sty("table-column",c.getAttribute("table:style-name"))._cw,r=Math.min(parseInt(c.getAttribute("table:number-columns-repeated"))||1,50);
-    for(let i=0;i<r;i++)h+=`<col${w?` style="width:${w}"`:""}>`});
-   h+="</colgroup>";
-   rows.forEach(r=>{
-    let tr="<tr>";
-    for(const c of r.children){
-     if(c.nodeName!=="table:table-cell")continue;
-     const rep=Math.min(parseInt(c.getAttribute("table:number-columns-repeated"))||1,30);
-     const cs=c.getAttribute("table:number-columns-spanned"),rs=c.getAttribute("table:number-rows-spanned");
-     const td=`<td${cs?` colspan="${cs}"`:""}${rs?` rowspan="${rs}"`:""} style="${S("table-cell",c.getAttribute("table:style-name"))}">${odfHtml(c,ctx)}</td>`;
-     tr+=td.repeat(rep);
-    }
-    tr+="</tr>";
-    h+=tr.repeat(Math.min(parseInt(r.getAttribute("table:number-rows-repeated"))||1,20));
-   });
-   return h+"</table>";
-  }
-  case "draw:frame":{
-   const w=a("svg:width"),st=w?`width:${cm(w)}cm;max-width:100%;`:"max-width:100%;";
-   const tb=[...el.children].find(c=>c.nodeName==="draw:text-box");
-   if(tb){const p=ctx.inline;ctx.inline=true;const h=odfHtml(tb,ctx);ctx.inline=p;return `<span style="display:inline-block;vertical-align:top;${st}">${h}</span>`}
-   const im=odfImg(el,ctx);
-   return im?`<span style="display:inline-block;vertical-align:top;${st}">${im}</span>`:"";
-  }
-  default:return odfHtml(el,ctx);
- }
-}
-function odpShape(el,ctx,master){
- const n=el.nodeName,a=x=>el.getAttribute(x);
- if(n==="draw:g")return [...el.children].map(c=>odpShape(c,ctx,master)).join("");
- if(!["draw:frame","draw:custom-shape","draw:rect","draw:ellipse","draw:circle","draw:line","draw:connector"].includes(n))return "";
- if(master&&a("presentation:class"))return "";           // zones réservées du masque
- const gname=a("draw:style-name");
- if(n==="draw:line"||n==="draw:connector"){
-  const g=ctx.sty("graphic",gname);if(g._sd==="none")return "";
-  const x1=cm(a("svg:x1")),y1=cm(a("svg:y1")),x2=cm(a("svg:x2")),y2=cm(a("svg:y2"));
-  const len=Math.hypot(x2-x1,y2-y1)*PX,ang=Math.atan2(y2-y1,x2-x1)*180/Math.PI,sw=Math.max(cm(g._sw,0.03)*PX,1);
-  return `<div style="position:absolute;left:${x1*PX}px;top:${y1*PX}px;width:${len}px;height:0;border-top:${sw}px ${g._sd==="dash"?"dashed":"solid"} ${g._sc||"#000"};transform-origin:0 0;transform:rotate(${ang}deg)"></div>`;
- }
- let x=cm(a("svg:x")),y=cm(a("svg:y"));
- const tr=a("draw:transform");
- if(tr){const m=/translate\s*\(\s*([^\s)]+)\s+([^\s)]+)/.exec(tr);if(m){x=cm(m[1]);y=cm(m[2])}}
- const w=cm(a("svg:width")),h=cm(a("svg:height"));
- const isFrame=n==="draw:frame";
- const g=ctx.sty("graphic",gname,isFrame),p=ctx.sty("presentation",a("presentation:style-name"),true),m={...p,...g};
- const keep=["background-color","padding","padding-left","padding-right","padding-top","padding-bottom","font-size","font-family","font-weight","font-style","color","text-align","line-height"],o={};
- keep.forEach(k=>{if(m[k])o[k]=m[k]});if(m._u)o._u=1;if(m._s)o._s=1;
- let css=toCss(o),inner="";
- if(isFrame){
-  for(const c of el.children){
-   if(c.nodeName==="draw:text-box")inner+=odfHtml(c,ctx);
-   else if(c.nodeName==="draw:image"){inner+=odfImg(el,ctx);break}
-   else if(c.nodeName==="table:table")inner+=odfEl(c,ctx);
-  }
- }else{
-  const geo=el.getElementsByTagName("draw:enhanced-geometry")[0],t=(geo&&geo.getAttribute("draw:type"))||"";
-  let pre=`display:flex;flex-direction:column;justify-content:${{top:"flex-start",bottom:"flex-end"}[m._va]||"center"};text-align:center;`;
-  if(m._sd&&m._sd!=="none")pre+=`border:${Math.max(cm(m._sw,0.03)*PX,1)}px ${m._sd==="solid"?"solid":"dashed"} ${m._sc||"#000"};`;
-  if(n==="draw:ellipse"||n==="draw:circle"||/ellipse/.test(t))pre+="border-radius:50%;";
-  else if(/round/.test(t))pre+="border-radius:12px;";
-  css=pre+css;
-  inner=[...el.children].filter(c=>c.nodeName.startsWith("text:")).map(c=>odfEl(c,ctx)).join("");
- }
- return `<div style="position:absolute;left:${x*PX}px;top:${y*PX}px;width:${w*PX}px;height:${h*PX}px;box-sizing:border-box;${esc(css)}">${inner}</div>`;
-}
-function pageSize(sDoc,mp){
- let W=28,H=15.75;
- if(sDoc&&mp){
-  const ln=mp.getAttribute("style:page-layout-name"),pl=[...sDoc.getElementsByTagName("style:page-layout")].find(l=>l.getAttribute("style:name")===ln);
-  const pp=pl&&pl.getElementsByTagName("style:page-layout-properties")[0];
-  if(pp){W=cm(pp.getAttribute("fo:page-width"),W);H=cm(pp.getAttribute("fo:page-height"),H)}
- }
- return [W,H];
-}
-function renderOdp(cDoc,sDoc,ctx,root){
- const pres=cDoc.getElementsByTagName("office:presentation")[0];
- const pages=[...pres.children].filter(c=>c.nodeName==="draw:page");
- const masters=new Map();
- if(sDoc)for(const m of sDoc.getElementsByTagName("style:master-page"))masters.set(m.getAttribute("style:name"),m);
- const slides=[];
- pages.forEach((pg,i)=>{
-  const mp=masters.get(pg.getAttribute("draw:master-page-name")),[W,H]=pageSize(sDoc,mp);
-  let bg=ctx.sty("drawing-page",pg.getAttribute("draw:style-name"))["background-color"]||(mp&&ctx.sty("drawing-page",mp.getAttribute("draw:style-name"))["background-color"]);
-  if(!bg||bg==="transparent")bg="#fff";
-  const cap=document.createElement("div");cap.className="odp-cap";cap.textContent=`Diapositive ${i+1} / ${pages.length}`;
-  const wrap=document.createElement("div");wrap.className="odp-wrap";
-  const inner=document.createElement("div");inner.className="odp-inner";
-  inner.style.cssText=`width:${W*PX}px;height:${H*PX}px;background:${bg}`;
-  let html="";
-  if(mp)for(const c of mp.children)html+=odpShape(c,ctx,true);
-  for(const c of pg.children)html+=odpShape(c,ctx,false);
-  inner.innerHTML=html;
-  wrap.append(inner);root.append(cap,wrap);slides.push({wrap,inner,W:W*PX,H:H*PX});
- });
- const fit=()=>{const cw=root.clientWidth;if(!cw)return;slides.forEach(s=>{const k=cw/s.W;s.wrap.style.height=s.H*k+"px";s.inner.style.transform=`scale(${k})`})};
- fit();
- odfObserver=new ResizeObserver(fit);odfObserver.observe(root);
-}
-async function renderOdf(file,url,content,token){
- if(!window.JSZip)throw Error("JSZip indisponible");
- const zip=await JSZip.loadAsync(await (await fetch(url)).arrayBuffer());
- const parse=async nm=>{const f=zip.file(nm);return f?new DOMParser().parseFromString(await f.async("string"),"application/xml"):null};
- const [cDoc,sDoc]=await Promise.all([parse("content.xml"),parse("styles.xml")]);
- if(!cDoc)throw Error("content.xml introuvable");
- const docs=[sDoc,cDoc].filter(Boolean),imgs=new Map();
- await Promise.all(docs.flatMap(d=>[...d.getElementsByTagName("draw:image")]).map(async el=>{
-  const href=(el.getAttribute("xlink:href")||"").replace(/^\.\//,""),ext=href.split(".").pop().toLowerCase(),f=href&&zip.file(href);
-  if(!f||!ODF_MIME[ext]||imgs.has(href))return;
-  imgs.set(href,"data:"+ODF_MIME[ext]+";base64,"+await f.async("base64"));
- }));
- if(token!==openToken)return;
- const ctx={...odfStyles(docs),imgs,cur:null,inline:false};
- const root=document.createElement("div");
- content.replaceChildren(root);
- if(file.type==="odp"){root.className="odp-root";renderOdp(cDoc,sDoc,ctx,root)}
- else{root.className="odf-doc";root.innerHTML=odfHtml(cDoc.getElementsByTagName("office:text")[0],ctx)}
-}
-
 /* ---------- Ouverture d'un fichier / d'un dossier ---------- */
 let openToken=0;
 /* Droits des iframes de démonstration (même origine que le portail ou falstad.com) */
@@ -496,42 +297,44 @@ function applyFrameRights(frame){
  frame.setAttribute("allow","fullscreen; clipboard-read; clipboard-write");
  frame.setAttribute("allowfullscreen","");
 }
+/* Options Falstad appliquées par défaut (paramètres d'URL de circuitjs) */
+const FALSTAD_OPTIONS={whiteBackground:true,IECGates:true,showOhmUnit:true,ohmUnit:true};
 /* Construit l'URL Falstad (circuitjs) à partir du texte d'un fichier .falstad */
-function falstadUrl(txt){
- const base="https://www.falstad.com/circuit/circuitjs.html";
+function falstadUrl(txt,menu=false){
  txt=txt.replace(/\r\n?/g,"\n");
- if(window.LZString)return base+"?ctz="+LZString.compressToEncodedURIComponent(txt);
- return base+"?cct="+encodeURIComponent(txt);
+ const q=[window.LZString?"ctz="+LZString.compressToEncodedURIComponent(txt):"cct="+encodeURIComponent(txt)];
+ for(const k in FALSTAD_OPTIONS)q.push(k+"="+FALSTAD_OPTIONS[k]);
+ if(!menu)q.push("hideMenu=true");
+ return "https://www.falstad.com/circuit/circuitjs.html?"+q.join("&");
 }
-function openFolder(item,button){
- document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
- if(button)button.classList.add("active");
- ++openToken;stopOdf();
+function openFolder(item,focus){
+ ++openToken;
+ cur=item;query="";activePath=null;$("#search").value="";
+ renderNav(focus);
+ if(item===rootItem){showWelcome();return}
  $("#welcome").hidden=true;$("#viewer").hidden=false;$("#main").classList.remove("wide");
  $("#fileTitle").textContent=item.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=item.path;
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
  const n=allFiles(item.children).length;
- const b=document.createElement("button");b.type="button";b.className="btn primary";
- b.textContent=`⬇ Télécharger tout le dossier (${n} fichier${n>1?"s":""})`;
- const st=document.createElement("span");st.className="muted";
+ const b=document.createElement("button");b.type="button";b.className="btn primary";b.textContent="⬇ Télécharger le dossier";
+ const st=document.createElement("span");st.className="muted";st.textContent=`${n} fichier${n>1?"s":""}`;
  b.onclick=async()=>{b.disabled=true;try{await downloadFolder(item,st)}finally{b.disabled=false}};
  toolbar.append(b,st);
  const ul=document.createElement("ul");ul.className="folder-list";
  item.children.forEach(c=>{
   const li=document.createElement("li"),x=document.createElement("button");
   x.type="button";x.className="linkbtn";x.textContent=`${icons[c.type]||"📄"} ${c.name}`;
-  x.onclick=()=>c.type==="folder"?openFolder(c,null):openFile(c,null);
+  x.onclick=()=>c.type==="folder"?openFolder(c):openFile(c);
   li.append(x);ul.append(li);
  });
  content.append(ul);
 }
-function openFile(file,button){
- document.querySelectorAll(".tree button.active").forEach(b=>b.classList.remove("active"));
- if(button)button.classList.add("active");
- stopOdf();
+function openFile(file){
+ activePath=file.path;
+ tree.querySelectorAll("button").forEach(b=>b.classList.toggle("active",!!b._item&&b._item.type!=="folder"&&b._item.path===activePath));
  $("#welcome").hidden=true;$("#viewer").hidden=false;
- $("#main").classList.toggle("wide",["pdf","text","html","falstad","odt","odp"].includes(file.type));
+ $("#main").classList.toggle("wide",["pdf","text","html","falstad"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=file.path;
  const url=urlOf(file);const token=++openToken;
@@ -553,13 +356,6 @@ function openFile(file,button){
    const pre=document.createElement("pre");pre.className="txt";pre.textContent=txt;
    content.replaceChildren(pre);
   }).catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
- }else if(file.type==="odt"||file.type==="odp"){
-  addLink("⬇ Télécharger le fichier",true);
-  content.textContent="Chargement du document…";
-  renderOdf(file,url,content,token).catch(err=>{
-   console.error(err);
-   if(token===openToken)content.innerHTML='<p class="notice">Impossible d’afficher ce document ici (connexion internet nécessaire pour la bibliothèque de lecture, ou fichier non pris en charge). Utilisez le bouton Télécharger.</p>';
-  });
  }else if(file.type==="pdf"){
   addLink("⬇ Télécharger le PDF",true);
   addLink("↗ Ouvrir dans un nouvel onglet");
@@ -573,11 +369,15 @@ function openFile(file,button){
   addLink("⬇ Télécharger le fichier .falstad",true);
   content.textContent="Chargement du circuit…";
   fetchText(url).then(txt=>{
-   if(token!==openToken)return;
-   const src=falstadUrl(txt);
-   const a=document.createElement("a");a.className="btn";a.href=src;a.target="_blank";a.rel="noopener";a.textContent="↗ Ouvrir dans Falstad (nouvel onglet)";toolbar.append(a);
-   const frame=document.createElement("iframe");frame.className="document falstad";frame.src=src;frame.title=file.name;
+   if(token!==openToken)return;                     // un autre fichier a été ouvert entre-temps
+   let menu=false;
+   const a=document.createElement("a");a.className="btn";a.target="_blank";a.rel="noopener";
+   const tg=document.createElement("button");tg.type="button";tg.className="btn";
+   const frame=document.createElement("iframe");frame.className="document falstad";frame.title=file.name;
    applyFrameRights(frame);
+   const apply=()=>{const src=falstadUrl(txt,menu);frame.src=src;a.href=src;a.textContent="↗ Ouvrir dans Falstad (nouvel onglet)";tg.textContent=menu?"☰ Masquer le menu Falstad":"☰ Afficher le menu Falstad"};
+   tg.onclick=()=>{menu=!menu;apply()};
+   toolbar.append(a,tg);apply();
    content.replaceChildren(frame);
   }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce circuit. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else{addLink("⬇ Télécharger le fichier",true)}
@@ -652,8 +452,8 @@ async function scanDir(handle,prefix="",out=[]){
 function showTree(paths,emptyMsg){
  courses=buildTree(paths);
  tree.replaceChildren();
- if(!courses.length){tree.textContent=emptyMsg;return false}
- renderTree(courses,tree);return true;
+ if(!courses.length){rootItem=null;tree.textContent=emptyMsg;return false}
+ indexTree();renderNav();return true;
 }
 function applyLocalFiles(entries){
  blobCache.forEach(u=>URL.revokeObjectURL(u));blobCache.clear();localFiles.clear();
@@ -661,7 +461,7 @@ function applyLocalFiles(entries){
  showTree([...localFiles.keys()],"Aucun document trouvé dans ce dossier.");
 }
 async function loadFromHandle(){
- tree.replaceChildren();
+ rootItem=null;tree.replaceChildren();
  const s=document.createElement("p");s.className="notice";s.textContent="Lecture du dossier local…";tree.append(s);
  try{applyLocalFiles(await scanDir(dirHandle))}
  catch(e){showPicker("Impossible de lire le dossier local. Choisissez-le à nouveau.")}
@@ -680,7 +480,7 @@ $("#folderInput").addEventListener("change",e=>{
  applyLocalFiles(files.map(f=>{const parts=(f.webkitRelativePath||f.name).split("/");parts.shift();return [parts.join("/"),f]}));
 });
 function showPicker(msg){
- tree.replaceChildren();
+ rootItem=null;tree.replaceChildren();
  const box=document.createElement("div");box.className="pickbox";
  const p=document.createElement("p");p.className="notice";p.textContent=msg;
  const b=document.createElement("button");b.type="button";b.className="btn primary";b.textContent="📂 Choisir le dossier du site";
@@ -696,27 +496,29 @@ async function initializePortal(){
   else showPicker(PICK_MSG);
   return;
  }
- tree.replaceChildren();
+ rootItem=null;tree.replaceChildren();
  const status=document.createElement('p');status.className='notice';status.textContent='Détection des dossiers et fichiers du dépôt…';tree.append(status);
  try{
   const paths=await discoverRepositoryFiles();
   if(mode!=="online")return;                         // changement de mode pendant le chargement
-  showTree(paths,'Aucun document trouvé dans les sous-dossiers du dépôt.');
+  if(showTree(paths,'Aucun document trouvé dans les sous-dossiers du dépôt.'))applyHash();
  }catch(error){
   status.textContent=error.message+' Vous pouvez aussi vérifier les paramètres du dépôt dans index.html.';
  }
 }
 
 document.querySelectorAll(".modes button").forEach(b=>b.addEventListener("click",()=>onModeClick(b.dataset.mode)));
-$("#search").addEventListener("input",e=>{
- const q=e.target.value.trim().toLocaleLowerCase("fr");
- document.querySelectorAll("#tree li").forEach(li=>li.style.display="");
- if(!q)return;
- document.querySelectorAll("#tree button").forEach(btn=>{
-  const match=btn.textContent.toLocaleLowerCase("fr").includes(q);
-  if(match){let p=btn.parentElement;while(p&&p!==tree){if(p.tagName==="LI")p.style.display="";if(p.classList?.contains("children"))p.classList.remove("hidden");p=p.parentElement;}}
-  else if(btn.parentElement.querySelector("ul")===null)btn.parentElement.style.display="none";
- });
+$("#search").addEventListener("input",e=>{query=e.target.value;if(rootItem)renderNav()});
+$("#search").addEventListener("keydown",e=>{
+ if(e.key==="ArrowDown"){const b=tree.querySelector("button");if(b){e.preventDefault();b.focus()}}
+});
+/* Flèches haut/bas dans le menu ; Entrée (clic natif du bouton) ouvre le fichier ou entre dans le dossier */
+tree.addEventListener("keydown",e=>{
+ if(e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;
+ const bs=[...tree.querySelectorAll("button")],i=bs.indexOf(document.activeElement);
+ if(i<0)return;e.preventDefault();
+ if(e.key==="ArrowDown")bs[Math.min(i+1,bs.length-1)].focus();
+ else if(i>0)bs[i-1].focus();else $("#search").focus();
 });
 toggleBtn.addEventListener("click",()=>setNav(layout.classList.contains("sidebar-collapsed")));
 
