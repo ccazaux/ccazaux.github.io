@@ -15,7 +15,7 @@ header{height:68px;background:var(--navy);color:white;display:flex;align-items:c
 .layout{display:grid;grid-template-columns:var(--side,300px) 5px minmax(0,1fr);min-height:calc(100vh - 68px)}
 .layout.sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
 .layout.sidebar-collapsed aside,.layout.sidebar-collapsed .resizer{display:none}
-aside{background:#fff;padding:18px 10px;overflow:auto;min-width:0}
+aside{background:#fff;padding:18px 10px;overflow:auto;min-width:0;position:sticky;top:0;align-self:start;height:calc(100vh - 68px)}
 .resizer{cursor:col-resize;background:var(--line);touch-action:none;transition:background .15s}
 .resizer:hover,.resizer.drag{background:var(--blue)}
 .modes{display:flex;border:1px solid #cbd5e1;border-radius:9px;overflow:hidden;margin:0 0 12px}
@@ -51,15 +51,20 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}
 .content pre.txt{white-space:pre-wrap;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;width:100%;margin:0}
 .content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
-main.wide iframe.document{height:80vh}
-main.wide iframe.document.falstad{height:85vh;min-height:600px}
+main.app{max-width:none;margin:0;padding:10px 14px;display:flex;flex-direction:column;height:calc(100vh - 68px)}
+main.app .breadcrumb,main.app footer{display:none}
+main.app .viewer{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:8px 14px;align-items:center;padding:8px 12px;border-radius:10px}
+main.app h2{font-size:16px;margin:0}
+main.app .toolbar{margin:0}
+main.app .content{grid-column:1/-1;align-self:stretch;min-height:0;display:flex}
+main.app iframe.document{flex:1;height:auto;min-height:0;border-radius:6px}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .ctxmenu{position:fixed;z-index:100;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px #0f172a30;padding:4px;min-width:210px}
 .ctxmenu button{display:block;width:100%;border:0;background:transparent;text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#243247}
 .ctxmenu button:hover{background:#f1f5f9}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#172b46;color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;z-index:101}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.resizer{display:none}aside{border-bottom:1px solid var(--line);max-height:48vh}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.resizer{display:none}aside{border-bottom:1px solid var(--line);max-height:48vh;position:static;height:auto}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}}
 </style>
 </head>
 <body>
@@ -131,7 +136,7 @@ function urlOf(file){
  return file.path;
 }
 function showWelcome(){
- $("#welcome").hidden=false;$("#viewer").hidden=true;$("#main").classList.remove("wide");$("#breadcrumb").hidden=true;
+ $("#welcome").hidden=false;$("#viewer").hidden=true;$("#main").classList.remove("wide","app");$("#breadcrumb").hidden=true;
 }
 function resetView(){
  activePath=null;query="";$("#search").value="";
@@ -312,7 +317,7 @@ function openFolder(item,focus){
  cur=item;query="";activePath=null;$("#search").value="";
  renderNav(focus);
  if(item===rootItem){showWelcome();return}
- $("#welcome").hidden=true;$("#viewer").hidden=false;$("#main").classList.remove("wide");
+ $("#welcome").hidden=true;$("#viewer").hidden=false;$("#main").classList.remove("wide","app");
  $("#fileTitle").textContent=item.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=item.path;
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
@@ -335,6 +340,7 @@ function openFile(file){
  tree.querySelectorAll("button").forEach(b=>b.classList.toggle("active",!!b._item&&b._item.type!=="folder"&&b._item.path===activePath));
  $("#welcome").hidden=true;$("#viewer").hidden=false;
  $("#main").classList.toggle("wide",["pdf","text","html","falstad"].includes(file.type));
+ $("#main").classList.toggle("app",["pdf","html","falstad"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=file.path;
  const url=urlOf(file);const token=++openToken;
@@ -361,7 +367,7 @@ function openFile(file){
   addLink("↗ Ouvrir dans un nouvel onglet");
   const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;content.append(frame);
  }else if(file.type==="html"){
-  addLink("↗ Ouvrir la démonstration dans un nouvel onglet");
+  addLink("↗ Ouvrir dans un nouvel onglet");
   const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;
   applyFrameRights(frame);
   content.append(frame);
@@ -375,7 +381,7 @@ function openFile(file){
    const tg=document.createElement("button");tg.type="button";tg.className="btn";
    const frame=document.createElement("iframe");frame.className="document falstad";frame.title=file.name;
    applyFrameRights(frame);
-   const apply=()=>{const src=falstadUrl(txt,menu);frame.src=src;a.href=src;a.textContent="↗ Ouvrir dans Falstad (nouvel onglet)";tg.textContent=menu?"☰ Masquer le menu Falstad":"☰ Afficher le menu Falstad"};
+   const apply=()=>{const src=falstadUrl(txt,menu);frame.src=src;a.href=src;a.textContent="↗ Ouvrir dans un nouvel onglet";tg.textContent=menu?"☰ Masquer le menu Falstad":"☰ Afficher le menu Falstad"};
    tg.onclick=()=>{menu=!menu;apply()};
    toolbar.append(a,tg);apply();
    content.replaceChildren(frame);
