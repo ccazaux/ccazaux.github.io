@@ -54,7 +54,8 @@ svg{max-width:100%;height:auto}
 <main>
   <h1>Quiz : fondamentaux d’électricité</h1>
   <p class="sub">10 questions, une note sur 10, corrigé détaillé à la fin. Les valeurs changent à chaque nouveau test.
-  Pour les réponses numériques, saisissez uniquement le nombre (virgule ou point) dans l’unité demandée.</p>
+  Pour les réponses numériques, saisissez uniquement le nombre (virgule ou point) dans l’unité demandée.<br>
+  Continuez à vous entraîner (en conditions d’examen, c’est-à-dire avec calculatrice, papier, stylo) jusqu’à obtenir 100 % de réussite.</p>
 
   <div id="quiz"></div>
 
@@ -146,7 +147,7 @@ function q1() {
     parts: [{ label: 'a)', ans: h, unit: 'heures' }, { label: 'b)', ans: t2, unit: 'heures' }],
     exp: `<b>a)</b> Q = I × t, donc t = Q / I = ${Q} / ${fmt(I / 1000)} = ${fmt(h * 3600)} s, soit ${fmt(h * 3600)} / 3600 = <b>${fmt(h)} h</b>
           (1 h = 3600 s).<br>
-          <b>b)</b> La capacité est déjà exprimée en mAh : t = C / I = ${C} / ${I} = <b>${fmt(t2)} h</b>.`
+          <b>b)</b> La capacité est déjà exprimée en mAh : t = Q / I = ${C} / ${I} = <b>${fmt(t2)} h</b>.`
   };
 }
 
@@ -180,10 +181,10 @@ function q3() {
   s += S.gen(60, 115) + S.resH(150, 50) + S.resV(260, 115) + S.resV(380, 115);
   s += S.dot(60, 50) + S.dot(260, 50) + S.dot(260, 180);
   s += T(60, 30, 'A') + T(260, 30, 'B');
-  s += arrow(78, 38, 120, 38) + T(99, 24, lab('I', 1));
+  s += head(96, 50, 0) + T(90, 34, lab('I', 1));
   s += T(150, 32, lab('R', 1));
-  s += arrow(242, 64, 242, 90) + T(230, 82, lab('I', 2), 'end') + T(276, 119, lab('R', 2), 'start');
-  s += arrow(362, 64, 362, 90) + T(350, 82, lab('I', 3), 'end') + T(396, 119, lab('R', 3), 'start');
+  s += head(260, 78, Math.PI / 2) + T(246, 76, lab('I', 2), 'end') + T(276, 119, lab('R', 2), 'start');
+  s += head(380, 78, Math.PI / 2) + T(366, 76, lab('I', 3), 'end') + T(396, 119, lab('R', 3), 'start');
   return {
     title: 'Loi des nœuds et loi d’Ohm', kind: 'num', vis: svgWrap(450, 205, s, 'Circuit avec trois résistances'),
     text: `Soit ${sub('I', 2)} = ${i2} mA, ${sub('I', 3)} = ${i3} mA et ${sub('R', 1)} = ${r1} kΩ. Calculer ${sub('U', 'AB')} (tension entre A et B, en volts).`,

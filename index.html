@@ -58,6 +58,17 @@ main.app h2{font-size:16px;margin:0}
 main.app .toolbar{margin:0}
 main.app .content{grid-column:1/-1;align-self:stretch;min-height:0;display:flex}
 main.app iframe.document{flex:1;height:auto;min-height:0;border-radius:6px}
+main.app .player{flex:1;min-width:0;min-height:0;width:100%;height:100%;object-fit:contain}
+.player{width:100%;max-height:75vh;background:#000;border-radius:6px;display:block}
+.codebox{flex:1;min-width:0;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:6px;background:#fff}
+table.code{border-collapse:collapse;width:100%;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4}
+table.code td{padding:0;border:0;vertical-align:top}
+table.code td.ln{user-select:none;text-align:right;color:#8c959f;padding:0 12px 0 10px;background:#f6f8fa;border-right:1px solid var(--line);position:sticky;left:0;min-width:3.4em}
+table.code td.lc{white-space:pre;padding:0 14px}
+.hl-com{color:#6e7781;font-style:italic}.hl-str{color:#0a3069}.hl-num{color:#0550ae}.hl-kw{color:#cf222e;font-weight:600}
+.hl-ty{color:#953800}.hl-bi{color:#116329}.hl-fn{color:#8250df}.hl-pre{color:#bc4c00}.hl-var{color:#0550ae}.hl-lbl{color:#8250df;font-weight:600}
+.linkcard{border:1px solid var(--line);border-radius:12px;padding:18px 20px;max-width:640px;display:grid;gap:10px}
+.linkcard .host{font-weight:700;color:#172b46}.linkcard .url{margin:0;color:var(--muted);font-size:13px;word-break:break-all}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .ctxmenu{position:fixed;z-index:100;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px #0f172a30;padding:4px;min-width:210px}
 .ctxmenu button{display:block;width:100%;border:0;background:transparent;text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#243247}
@@ -110,7 +121,7 @@ const repoOwner = "ccazaux";            // propriétaire GitHub
 const repoName = "ccazaux.github.io";   // nom du dépôt
 let courses = [];
 const $ = s => document.querySelector(s);
-const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",falstad:"⚡",odt:"📃",odp:"📊",other:"📄"};
+const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",falstad:"⚡",odt:"📃",odp:"📊",code:"📜",video:"🎬",link:"🔗",other:"📄"};
 const tree = $("#tree");
 const layout = $("#layout"), toggleBtn = $("#toggleNav");
 
@@ -266,8 +277,13 @@ async function downloadFolder(item,statusEl){
 function openInNewTab(item){
  if(item.type==="folder"){window.open(location.href.split("#")[0]+"#"+encodeURIComponent(item.path),"_blank");return}
  if(item.type==="falstad"){
-  const w=window.open("about:blank","_blank");
+  const w=window.open("about:blank","_blank");if(w)w.opener=null;
   fetchText(urlOf(item)).then(t=>{if(w)w.location.href=falstadUrl(t,true)}).catch(()=>{if(w)w.close()});
+  return;
+ }
+ if(item.type==="link"){
+  const w=window.open("about:blank","_blank");if(w)w.opener=null;
+  fetchText(urlOf(item)).then(t=>{const i=linkInfo(parseLink(t));if(i&&w)w.location.href=i.url;else if(w)w.close()}).catch(()=>{if(w)w.close()});
   return;
  }
  window.open(urlOf(item),"_blank");
@@ -293,6 +309,156 @@ document.addEventListener("click",hideMenu);
 addEventListener("keydown",e=>{if(e.key==="Escape")hideMenu()});
 addEventListener("resize",hideMenu);
 $("#sidebar").addEventListener("scroll",hideMenu);
+
+/* ---------- Code source : coloration, numéros de lignes, indentation automatique ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const CODE_LANGS={ino:"c",c:"c",h:"c",cpp:"c",hpp:"c",cc:"c",sh:"sh",bash:"sh",py:"py",cmd:"bat",bat:"bat"};
+const VIDEO_EXT=["mp4","m4v","webm","ogv","mov"], LINK_EXT=["link","url"];
+const langOf=path=>CODE_LANGS[path.split(".").pop().toLowerCase()];
+const INDENT="  ";   // indentation automatique (C/C++/Arduino) : 2 espaces comme l'IDE Arduino
+const HL={
+ c:{flags:"gm",rules:[
+  ["com",/\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|(?![\s\S]))/],
+  ["pre",/^[ \t]*#(?:[^\n\\]|\\[\s\S])*/],
+  ["str",/"(?:[^"\\\n]|\\[\s\S])*"?|'(?:[^'\\\n]|\\[\s\S])*'?/],
+  ["num",/\b(?:0[xX][\da-fA-F']+|0[bB][01']+|\d[\d']*(?:\.\d*)?(?:[eE][+-]?\d+)?)[uUlLfF]*\b|\.\d+(?:[eE][+-]?\d+)?[fF]?\b/],
+  ["kw",/\b(?:if|else|for|while|do|switch|case|default|break|continue|return|goto|struct|union|enum|typedef|sizeof|static|const|volatile|extern|inline|register|class|public|private|protected|virtual|template|typename|namespace|using|new|delete|this|operator|try|catch|throw|auto|constexpr|nullptr|true|false|explicit|friend|override|final|noexcept|mutable|asm)\b/],
+  ["ty",/\b(?:void|int|char|short|long|float|double|signed|unsigned|bool|byte|word|boolean|size_t|String|string|wchar_t|FILE|u?int\d+_t)\b/],
+  ["bi",/\b(?:HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP|LED_BUILTIN|A\d+|PI|NULL|EOF|Serial\d?|Wire|SPI|setup|loop|main|pinMode|digitalWrite|digitalRead|analogRead|analogWrite|delay|delayMicroseconds|millis|micros|attachInterrupt|map|constrain|min|max|abs|printf|scanf|puts|putchar|getchar|malloc|free|memcpy|memset|strlen|strcpy|strcmp|sprintf)\b/],
+  ["fn",/\b[A-Za-z_]\w*(?=\s*\()/]]},
+ py:{flags:"gm",rules:[
+  ["com",/#[^\n]*/],
+  ["str",/(?:\b[rRbBfFuU]{1,2})?(?:"""[\s\S]*?(?:"""|(?![\s\S]))|'''[\s\S]*?(?:'''|(?![\s\S]))|"(?:[^"\\\n]|\\[\s\S])*"?|'(?:[^'\\\n]|\\[\s\S])*'?)/],
+  ["pre",/^[ \t]*@[\w.]+/],
+  ["num",/\b(?:0[xX][\da-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|\d[\d_]*(?:\.\d*)?(?:[eE][+-]?\d+)?j?)\b|\.\d+\b/],
+  ["kw",/\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|True|False|None)\b/],
+  ["bi",/\b(?:print|len|range|int|str|float|list|dict|set|tuple|open|input|enumerate|zip|map|filter|sum|min|max|abs|sorted|isinstance|type|bool|bytes|super|self|cls|round|reversed|any|all|format|repr|hex|bin|ord|chr|__name__|__init__)\b/],
+  ["fn",/\b[A-Za-z_]\w*(?=\s*\()/]]},
+ sh:{flags:"gm",rules:[
+  ["pre",/^#![^\n]*/],
+  ["var",/\$(?:\{[^}\n]*\}|[A-Za-z_]\w*|[0-9@*#?$!-])/],
+  ["com",/#[^\n]*/],
+  ["str",/"(?:[^"\\]|\\[\s\S])*"?|'[^']*'?/],
+  ["kw",/\b(?:if|then|else|elif|fi|for|while|until|do|done|case|esac|in|function|select|return|exit|break|continue|local|export|readonly|declare|unset|shift|trap|source|alias)\b/],
+  ["bi",/\b(?:echo|printf|cd|ls|cat|grep|sed|awk|mkdir|rm|cp|mv|chmod|chown|pwd|read|test|eval|exec|set|sudo|apt|make|curl|wget|tar|find|head|tail|sort|uniq|wc)\b/],
+  ["num",/\b\d+\b/],
+  ["fn",/\b[A-Za-z_][\w-]*(?=\s*\(\))/]]},
+ bat:{flags:"gim",rules:[
+  ["com",/^[ \t]*(?:@?rem\b|::)[^\n]*/],
+  ["str",/"[^"\n]*"?/],
+  ["var",/%%?[~\w:=*]+%?|![A-Za-z_]\w*!/],
+  ["lbl",/^[ \t]*:[A-Za-z_]\w*/],
+  ["kw",/\b(?:if|else|for|in|do|goto|call|exit|set|setlocal|endlocal|enabledelayedexpansion|echo|pause|not|exist|defined|errorlevel|equ|neq|lss|leq|gtr|geq|start|shift|cd|md|mkdir|rd|rmdir|del|copy|xcopy|move|ren|type|cls|title|color|choice|timeout|find|findstr)\b/],
+  ["num",/\b\d+\b/]]}
+};
+function tokenize(src,lang){
+ const L=HL[lang];
+ if(!L.re)L.re=new RegExp(L.rules.map(r=>"("+r[1].source+")").join("|"),L.flags);
+ const re=L.re,toks=[];let last=0,m;re.lastIndex=0;
+ while((m=re.exec(src))){
+  if(m[0]===""){re.lastIndex++;continue}
+  if(m.index>last)toks.push([null,src.slice(last,m.index)]);
+  toks.push([L.rules[m.findIndex((x,i)=>i>0&&x!==undefined)-1][0],m[0]]);
+  last=re.lastIndex;
+ }
+ if(last<src.length)toks.push([null,src.slice(last)]);
+ return toks;
+}
+function codeHtml(text,lang){
+ const lines=[[]];
+ for(const [c,t] of tokenize(text,lang))t.split("\n").forEach((part,i)=>{if(i)lines.push([]);if(part)lines[lines.length-1].push([c,part])});
+ if(lines.length>1&&!lines[lines.length-1].length)lines.pop();
+ return `<table class="code"><tbody>${lines.map((ln,i)=>`<tr><td class="ln">${i+1}</td><td class="lc">${ln.map(([c,p])=>c?`<span class="hl-${c}">${esc(p)}</span>`:esc(p)).join("")}</td></tr>`).join("")}</tbody></table>`;
+}
+/* Analyse d'une ligne C/C++ : accolades/parenthèses hors chaînes et commentaires */
+function scanC(t){
+ let plain="",db=0,dp=0,lead=0,leadP=false,saw=false,block=false;
+ for(let i=0;i<t.length;i++){
+  const c=t[i],n=t[i+1];
+  if(c==="/"&&n==="/")break;
+  if(c==="/"&&n==="*"){const j=t.indexOf("*/",i+2);if(j<0){block=true;break}i=j+1;continue}
+  if(c==='"'||c==="'"){let j=i+1;while(j<t.length&&t[j]!==c){if(t[j]==="\\")j++;j++}plain+=c+c;i=j;saw=true;continue}
+  if(c===" "||c==="\t"){plain+=c;continue}
+  if(c==="}"){db--;if(!saw)lead++;plain+=c;continue}
+  if(c===")"||c==="]"){dp--;if(!saw)leadP=true;saw=true;plain+=c;continue}
+  saw=true;
+  if(c==="{")db++;else if(c==="("||c==="[")dp++;
+  plain+=c;
+ }
+ return {plain:plain.trim(),db,dp,lead,leadP,block};
+}
+/* Réindentation automatique (C, C++, Arduino) : accolades, case/default, parenthèses, if/for/else sans accolades */
+function reindentC(src){
+ const out=[],caseAt={},braceCase={};
+ let depth=0,paren=0,inBlock=false,pending=0,ppCont=false,ctlOpen=false;
+ /* décalage dû aux « case » ouverts (hors bloc { } ouvert sur la ligne du case) */
+ const casesTo=(d,ref)=>{let n=0;for(const k in caseAt)if(caseAt[k]&&+k<=d&&!(braceCase[k]&&ref>+k))n++;return n};
+ for(const raw of src.replace(/\r\n?/g,"\n").split("\n")){
+  const t=raw.trim();
+  if(!t){out.push("");continue}
+  if(inBlock){
+   out.push(t[0]==="*"?INDENT.repeat(depth+casesTo(depth,depth))+" "+t:raw.replace(/\s+$/,""));
+   if(t.includes("*/"))inBlock=false;continue;
+  }
+  if(ppCont||t[0]==="#"){out.push(ppCont?INDENT+t:t);ppCont=t.endsWith("\\");continue}
+  const s=scanC(t),closed=[];
+  let d=depth;
+  for(let k=0;k<s.lead;k++){delete caseAt[d];closed.push(d-1);d=Math.max(d-1,0)}
+  const isCase=/^(?:case\b[^:]*|default\s*):(?!:)/.test(s.plain);
+  const pe=Math.max(paren-(s.leadP?1:0),0)>0?1:0;
+  let lvl;
+  if(isCase){lvl=d+casesTo(d-1,depth);caseAt[d]=true;if(s.db>0)braceCase[d]=true}
+  else lvl=d+casesTo(d,depth)+pe+(s.plain[0]==="{"?0:pending);
+  out.push(INDENT.repeat(lvl)+t);
+  closed.forEach(k=>{braceCase[k]=false});
+  depth=Math.max(depth+s.db,0);paren=Math.max(paren+s.dp,0);inBlock=s.block;
+  const startsCtl=/^(?:\}\s*)?(?:else\s+if|if|for|while|switch)\b/.test(s.plain);
+  if(startsCtl&&paren>0)ctlOpen=true;
+  const endsParen=/\)$/.test(s.plain)&&paren===0;
+  const elseOnly=/^(?:\}\s*)?else$/.test(s.plain)||/^do$/.test(s.plain);
+  if(((startsCtl||ctlOpen)&&endsParen&&s.db===0)||elseOnly){pending++;ctlOpen=false}
+  else if(paren===0){pending=0;ctlOpen=false}
+ }
+ return out.join("\n");
+}
+
+/* ---------- Liens externes (.link / .url) : YouTube, Vimeo, Wokwi, … ---------- */
+const EMBED_HOSTS=["wokwi.com","falstad.com","geogebra.org","desmos.com","youtube-nocookie.com","player.vimeo.com"];
+const parseLink=t=>{const m=/https?:\/\/[^\s"'<>]+/i.exec(t||"");return m?m[0]:null};
+function ytStart(v){
+ const m=/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/.exec(v||"");
+ return m?(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0):0;
+}
+function linkInfo(raw){
+ let u;try{u=new URL(raw)}catch(e){return null}
+ if(!/^https?:$/.test(u.protocol))return null;
+ const host=u.hostname.replace(/^www\./,"");
+ const info={url:u.href,host,embed:null};
+ let id=null;
+ const list=u.searchParams.get("list");
+ if(host==="youtu.be")id=u.pathname.slice(1).split("/")[0];
+ else if(host==="youtube.com"||host.endsWith(".youtube.com")||host==="youtube-nocookie.com"){
+  const m=/^\/(?:shorts|embed|live|v)\/([\w-]{6,})/.exec(u.pathname);
+  id=m?m[1]:(u.pathname==="/watch"?u.searchParams.get("v"):null);
+  if(!id&&list&&u.pathname==="/playlist"){info.embed="https://www.youtube-nocookie.com/embed/videoseries?list="+encodeURIComponent(list);return info}
+ }
+ if(id){
+  const q=[],st=ytStart(u.searchParams.get("t")||u.searchParams.get("start"));
+  if(st)q.push("start="+st);if(list)q.push("list="+encodeURIComponent(list));
+  info.embed="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(id)+(q.length?"?"+q.join("&"):"");
+  return info;
+ }
+ const vm=host==="vimeo.com"&&/^\/(\d+)/.exec(u.pathname);
+ if(vm){info.embed="https://player.vimeo.com/video/"+vm[1];return info}
+ if(EMBED_HOSTS.some(h=>host===h||host.endsWith("."+h)))info.embed=u.href;
+ return info;
+}
+function applyExternalRights(frame){
+ frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-presentation allow-modals allow-downloads");
+ frame.setAttribute("allow","fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-write; accelerometer; gyroscope");
+ frame.setAttribute("allowfullscreen","");
+ frame.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
+}
 
 /* ---------- Ouverture d'un fichier / d'un dossier ---------- */
 let openToken=0;
@@ -339,8 +505,8 @@ function openFile(file){
  activePath=file.path;
  tree.querySelectorAll("button").forEach(b=>b.classList.toggle("active",!!b._item&&b._item.type!=="folder"&&b._item.path===activePath));
  $("#welcome").hidden=true;$("#viewer").hidden=false;
- $("#main").classList.toggle("wide",["pdf","text","html","falstad"].includes(file.type));
- $("#main").classList.toggle("app",["pdf","html","falstad"].includes(file.type));
+ $("#main").classList.toggle("wide",["pdf","text","html","falstad","code","video"].includes(file.type));
+ $("#main").classList.toggle("app",["pdf","html","falstad","code","video"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=file.path;
  const url=urlOf(file);const token=++openToken;
@@ -386,6 +552,50 @@ function openFile(file){
    toolbar.append(a,tg);apply();
    content.replaceChildren(frame);
   }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce circuit. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="code"){
+  addLink("⬇ Télécharger le fichier",true);
+  content.textContent="Chargement du code…";
+  fetchText(url).then(txt=>{
+   if(token!==openToken)return;
+   const lang=file.lang,canFmt=lang==="c";
+   let auto=true,shown=txt;
+   const box=document.createElement("div");box.className="codebox";
+   const mk=l=>{const b=document.createElement("button");b.type="button";b.className="btn";b.textContent=l;return b};
+   const cp=mk("⎘ Copier le code"),tg=canFmt?mk(""):null;
+   const draw=()=>{
+    shown=canFmt&&auto?reindentC(txt):txt.replace(/\r\n?/g,"\n");
+    box.innerHTML=codeHtml(shown,lang);
+    if(tg)tg.textContent=auto?"↹ Indentation automatique : oui":"↹ Indentation automatique : non";
+   };
+   cp.onclick=()=>navigator.clipboard.writeText(shown).then(()=>toast("Code copié"),()=>toast("Copie impossible"));
+   if(tg)tg.onclick=()=>{auto=!auto;draw()};
+   toolbar.append(cp);if(tg)toolbar.append(tg);
+   draw();content.replaceChildren(box);
+  }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="video"){
+  addLink("⬇ Télécharger la vidéo",true);
+  const v=document.createElement("video");v.className="player";v.controls=true;v.preload="metadata";v.playsInline=true;v.src=url;
+  v.addEventListener("error",()=>{content.innerHTML='<p class="notice">Cette vidéo ne peut pas être lue par votre navigateur (format ou codec non pris en charge). Utilisez le bouton Télécharger, ou convertissez-la en MP4 (H.264 + AAC).</p>'});
+  content.append(v);
+ }else if(file.type==="link"){
+  content.textContent="Chargement du lien…";
+  fetchText(url).then(txt=>{
+   if(token!==openToken)return;
+   const info=linkInfo(parseLink(txt));
+   if(!info){content.innerHTML='<p class="notice">Ce fichier ne contient pas de lien http(s) valide (une seule ligne, par exemple https://wokwi.com/projects/…).</p>';return}
+   const a=document.createElement("a");a.className="btn";a.href=info.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ Ouvrir dans un nouvel onglet";toolbar.append(a);
+   const show=src=>{
+    $("#main").classList.add("wide","app");
+    const frame=document.createElement("iframe");frame.className="document";frame.title=file.name;
+    applyExternalRights(frame);frame.src=src;content.replaceChildren(frame);
+   };
+   if(info.embed){show(info.embed);return}
+   const card=document.createElement("div");card.className="linkcard";
+   card.innerHTML='<div class="host"></div><p class="url"></p><p class="muted">Ce site n’est pas connu pour autoriser son affichage dans une page. Vous pouvez essayer de l’afficher ici ; sinon, ouvrez-le dans un nouvel onglet.</p>';
+   card.querySelector(".host").textContent="🔗 "+info.host;card.querySelector(".url").textContent=info.url;
+   const b=document.createElement("button");b.type="button";b.className="btn";b.textContent="Afficher ici";b.onclick=()=>show(info.url);
+   card.append(b);content.replaceChildren(card);
+  }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce lien.</p>';});
  }else{addLink("⬇ Télécharger le fichier",true)}
  if(innerWidth<=760)setNav(false);
 }
@@ -402,6 +612,9 @@ function fileType(path){
  if(ext==='falstad')return 'falstad';
  if(ext==='odt')return 'odt';
  if(ext==='odp')return 'odp';
+ if(CODE_LANGS[ext])return 'code';
+ if(VIDEO_EXT.includes(ext))return 'video';
+ if(LINK_EXT.includes(ext))return 'link';
  return 'other';
 }
 function buildTree(paths){
@@ -421,7 +634,8 @@ function buildTree(paths){
    return af===bf?a.name.localeCompare(b.name,'fr',{numeric:true}):(af?-1:1);
   }).map(item=>{
    if(item.children.size>0||!item.path)return {name:prettyName(item.name),type:'folder',path:item.full,children:convert(item)};
-   return {name:item.name,type:fileType(item.path),path:item.path};
+   const ty=fileType(item.path);
+   return {name:ty==='link'?item.name.replace(/\.[^.]+$/,''):item.name,type:ty,path:item.path,lang:langOf(item.path)};
   });
  }
  return convert(root);
