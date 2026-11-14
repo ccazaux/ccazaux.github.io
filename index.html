@@ -8,14 +8,19 @@
 <style>
 :root{--navy:#172b46;--blue:#2463a6;--bg:#f3f6fa;--line:#e2e8f0;--muted:#64748b;--panel:#fff;--active:#eaf2fc}
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#243247;background:var(--bg)}
-header{height:68px;background:var(--navy);color:white;display:flex;align-items:center;padding:0 22px;gap:13px;box-shadow:0 2px 8px #10203330}
-.logo{font-size:25px}header h1{font-size:19px;margin:0;font-weight:700}header small{display:block;color:#c6d5e7;font-size:12px}
-.menu-btn{background:#ffffff1f;color:#fff;border:1px solid #ffffff40;border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer;flex:none}
-.menu-btn:hover{background:#ffffff33}
-.layout{display:grid;grid-template-columns:var(--side,300px) 5px minmax(0,1fr);min-height:calc(100vh - 68px)}
-.layout.sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
-.layout.sidebar-collapsed aside,.layout.sidebar-collapsed .resizer{display:none}
-aside{background:#fff;padding:18px 10px;overflow:auto;min-width:0;position:sticky;top:0;align-self:start;height:calc(100vh - 68px)}
+.brand{display:flex;align-items:center;gap:8px;margin:-6px 0 12px;min-width:0}
+.logo{font-size:22px;line-height:1}
+.brandtxt{display:flex;flex-direction:column;line-height:1.15;min-width:0}.brandtxt b{font-size:15px;color:var(--navy)}.brandtxt small{font-size:11px;color:var(--muted)}
+.menu-btn{background:#f1f5f9;color:var(--navy);border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;flex:none}
+.menu-btn:hover{background:#e2e8f0}
+.layout{display:grid;grid-template-columns:var(--side,300px) 5px minmax(0,1fr);min-height:100vh}
+.layout.sidebar-collapsed{grid-template-columns:48px minmax(0,1fr)}
+.layout.sidebar-collapsed .resizer{display:none}
+.layout.sidebar-collapsed aside{padding:10px 6px;overflow:hidden;border-right:1px solid var(--line)}
+.layout.sidebar-collapsed aside>:not(.brand){display:none}
+.layout.sidebar-collapsed .brand{margin:0}
+.layout.sidebar-collapsed .brand .logo,.layout.sidebar-collapsed .brandtxt,.layout.sidebar-collapsed .menu-btn span{display:none}
+aside{background:#fff;padding:18px 10px;overflow:auto;min-width:0;position:sticky;top:0;align-self:start;height:100vh}
 .resizer{cursor:col-resize;background:var(--line);touch-action:none;transition:background .15s}
 .resizer:hover,.resizer.drag{background:var(--blue)}
 .modes{display:flex;border:1px solid #cbd5e1;border-radius:9px;overflow:hidden;margin:0 0 12px}
@@ -51,7 +56,7 @@ h2{font-size:27px;line-height:1.2;margin:0 0 10px;color:#172b46}
 .content pre.txt{white-space:pre-wrap;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;width:100%;margin:0}
 .content table{border-collapse:collapse;width:100%}.content td,.content th{border:1px solid var(--line);padding:8px;text-align:left}
 iframe.document{width:100%;height:min(75vh,850px);border:1px solid var(--line);border-radius:8px;background:white}
-main.app{max-width:none;margin:0;padding:10px 14px;display:flex;flex-direction:column;height:calc(100vh - 68px)}
+main.app{max-width:none;margin:0;padding:10px 14px;display:flex;flex-direction:column;height:100vh}
 main.app .breadcrumb,main.app footer{display:none}
 main.app .viewer{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:8px 14px;align-items:center;padding:8px 12px;border-radius:10px}
 main.app h2{font-size:16px;margin:0}
@@ -69,22 +74,28 @@ table.code td.lc{white-space:pre;padding:0 14px}
 .hl-ty{color:#953800}.hl-bi{color:#116329}.hl-fn{color:#8250df}.hl-pre{color:#bc4c00}.hl-var{color:#0550ae}.hl-lbl{color:#8250df;font-weight:600}
 .linkcard{border:1px solid var(--line);border-radius:12px;padding:18px 20px;max-width:640px;display:grid;gap:10px}
 .linkcard .host{font-weight:700;color:#172b46}.linkcard .url{margin:0;color:var(--muted);font-size:13px;word-break:break-all}
+.wavebox{flex:1;min-width:0;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:6px;background:#fff;padding:14px}
+.wavebox svg{max-width:none;height:auto}
+.imgbox{flex:1;min-width:0;min-height:0;overflow:auto;display:flex;border:1px solid var(--line);border-radius:6px;background:#fff}
+.imgbox img{margin:auto;max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+.imgbox.full img{max-width:none;max-height:none;cursor:zoom-out}
+.md{overflow-wrap:break-word}
 .notice{background:#eff6ff;border-left:4px solid #60a5fa;padding:12px 15px;border-radius:5px;color:#34516e;font-size:13px;margin:0}
 .ctxmenu{position:fixed;z-index:100;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px #0f172a30;padding:4px;min-width:210px}
 .ctxmenu button{display:block;width:100%;border:0;background:transparent;text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#243247}
 .ctxmenu button:hover{background:#f1f5f9}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#172b46;color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;z-index:101}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.resizer{display:none}aside{border-bottom:1px solid var(--line);max-height:48vh;position:static;height:auto}.layout{min-height:calc(100vh - 68px)}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.resizer{display:none}aside{border-bottom:1px solid var(--line);max-height:48vh;position:static;height:auto}main{padding:17px 13px}h2{font-size:23px}.menu-btn span{display:none}.layout.sidebar-collapsed{grid-template-columns:1fr}.layout.sidebar-collapsed aside{padding:6px 10px;border-right:0;border-bottom:1px solid var(--line);position:static;height:auto}.layout.sidebar-collapsed .brand .logo{display:inline}.layout.sidebar-collapsed .brandtxt{display:flex}main.app{height:calc(100vh - 48px)}}
 </style>
 </head>
 <body>
-<header>
-  <button id="toggleNav" class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="true" title="Masquer / afficher le menu">☰ <span>Menu</span></button>
-  <div class="logo">👨‍💻</div><div><h1>BTS CIEL</h1><small>option ER</small></div>
-</header>
 <div class="layout" id="layout">
 <aside id="sidebar">
+  <div class="brand">
+    <button id="toggleNav" class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="true" title="Masquer / afficher le menu">☰ <span>Menu</span></button>
+    <span class="logo">👨‍💻</span><span class="brandtxt"><b>BTS CIEL</b><small>option ER</small></span>
+  </div>
   <div class="modes" id="modes" role="group" aria-label="Source des fichiers">
     <button type="button" data-mode="online" title="Lit les fichiers publiés sur GitHub (API GitHub)">🌐 En ligne</button>
     <button type="button" data-mode="local" title="Lit directement les fichiers de votre disque (re-cliquer pour relire le dossier)">💻 Local</button>
@@ -113,15 +124,19 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/wavedrom@3.5.0/skins/default.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/wavedrom@3.5.0/wavedrom.min.js"></script>
 <script>
 /* Deux modes (le mode local n'apparaît que si le portail est ouvert depuis le disque ou localhost) :
    - « En ligne » : détection des fichiers via l'API GitHub (le dépôt doit être public).
    - « Local »    : lecture directe d'un dossier de votre disque (sélecteur de dossier du navigateur). */
 const repoOwner = "ccazaux";            // propriétaire GitHub
 const repoName = "ccazaux.github.io";   // nom du dépôt
+const KICANVAS_JS = "https://kicanvas.org/kicanvas/kicanvas.js";  // pour être indépendant : copiez ce fichier dans le dépôt et mettez son chemin ici
+let repoRef = null;                   // {owner, repo, branch} détectés en mode en ligne
 let courses = [];
 const $ = s => document.querySelector(s);
-const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",falstad:"⚡",odt:"📃",odp:"📊",code:"📜",video:"🎬",link:"🔗",other:"📄"};
+const icons = {folder:"📁",markdown:"📘",html:"🧪",pdf:"📕",text:"📝",falstad:"⚡",odt:"📃",odp:"📊",code:"📜",video:"🎬",link:"🔗",wavedrom:"📈",kicad:"🔌",image:"🖼️",drawio:"🧩",godbolt:"▶️",other:"📄"};
 const tree = $("#tree");
 const layout = $("#layout"), toggleBtn = $("#toggleNav");
 
@@ -286,6 +301,14 @@ function openInNewTab(item){
   fetchText(urlOf(item)).then(t=>{const i=linkInfo(parseLink(t));if(i&&w)w.location.href=i.url;else if(w)w.close()}).catch(()=>{if(w)w.close()});
   return;
  }
+ if(item.type==="godbolt"){
+  const w=window.open("about:blank","_blank");if(w)w.opener=null;
+  fetchText(urlOf(item)).then(t=>{if(w)w.location.href=godboltUrl(t,!/\.c\.link$/i.test(item.path)).replace("godbolt.org/e#","godbolt.org/#")}).catch(()=>{if(w)w.close()});
+  return;
+ }
+ if(item.type==="drawio"&&mode==="online"){window.open("https://app.diagrams.net/#U"+encodeURIComponent(new URL(item.path,location.href).href),"_blank");return}
+ if(item.type==="pdf"){window.open(urlOf(item)+PDF_FRAG,"_blank");return}
+ if(item.type==="kicad"){window.open(kicanvasAppUrl(item.path)||urlOf(item),"_blank");return}
  window.open(urlOf(item),"_blank");
 }
 function hideMenu(){const m=$("#ctxmenu");if(m)m.remove()}
@@ -424,7 +447,7 @@ function reindentC(src){
 
 /* ---------- Liens externes (.link / .url) : YouTube, Vimeo, Wokwi, … ---------- */
 const EMBED_HOSTS=["wokwi.com","falstad.com","geogebra.org","desmos.com","youtube-nocookie.com","player.vimeo.com"];
-const parseLink=t=>{const m=/https?:\/\/[^\s"'<>]+/i.exec(t||"");return m?m[0]:null};
+const parseLink=t=>{t=t||"";const m=/https?:\/\/[^\s"<>]+/i.exec(t);if(!m)return null;let u=m[0];if(u.endsWith("'")&&t[m.index-1]==="'")u=u.slice(0,-1);return u};
 function ytStart(v){
  const m=/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/.exec(v||"");
  return m?(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0):0;
@@ -448,6 +471,9 @@ function linkInfo(raw){
   info.embed="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(id)+(q.length?"?"+q.join("&"):"");
   return info;
  }
+ if(host==="godbolt.org"&&/^\/e\/?$/.test(u.pathname)){        // Compiler Explorer : vue intégrable (/e) ; page complète pour un nouvel onglet
+  const full=new URL(u.href);full.pathname="/";info.url=full.href;info.embed=u.href;return info;
+ }
  const vm=host==="vimeo.com"&&/^\/(\d+)/.exec(u.pathname);
  if(vm){info.embed="https://player.vimeo.com/video/"+vm[1];return info}
  if(EMBED_HOSTS.some(h=>host===h||host.endsWith("."+h)))info.embed=u.href;
@@ -460,6 +486,58 @@ function applyExternalRights(frame){
  frame.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
 }
 
+const IMG_EXT=["png","jpg","jpeg","gif","bmp","webp","svg","avif","ico"];
+function joinPath(dir,rel){
+ const out=dir?dir.split("/"):[];
+ for(const seg of rel.split("/")){if(seg===""||seg===".")continue;if(seg==="..")out.pop();else out.push(seg)}
+ return out.join("/");
+}
+/* Markdown : liens et images relatifs résolus par rapport au dossier du fichier */
+function renderMarkdown(box,md,file){
+ if(!window.marked){box.textContent=md;return}
+ box.innerHTML=marked.parse(md);
+ const dir=file.path.includes("/")?file.path.slice(0,file.path.lastIndexOf("/")):"";
+ const isRel=u=>!!u&&!/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(u);
+ const resolve=u=>{const c=u.split("#")[0].split("?")[0];let d=c;try{d=decodeURIComponent(c)}catch(e){}return joinPath(dir,d)};
+ box.querySelectorAll("img[src]").forEach(img=>{
+  const raw=img.getAttribute("src");if(!isRel(raw))return;
+  const p=resolve(raw),it=pathIndex.get("f:"+p);
+  img.src=it?urlOf(it):p;
+ });
+ box.querySelectorAll("a[href]").forEach(a=>{
+  const raw=a.getAttribute("href");if(!isRel(raw))return;
+  const p=resolve(raw),it=pathIndex.get("f:"+p)||pathIndex.get("d:"+p);
+  if(it){
+   a.href="#";
+   a.addEventListener("click",e=>{e.preventDefault();if(it.type==="folder")openFolder(it);else{cur=it.parent;query="";$("#search").value="";renderNav();openFile(it)}});
+  }else{a.href=p;a.target="_blank";a.rel="noopener"}
+ });
+}
+/* Compiler Explorer : construit l'adresse (état « rison ») d'une vue intégrée avec le code et l'exécution */
+function rison(o){
+ if(Array.isArray(o))return "!("+o.map(rison).join(",")+")";
+ if(o&&typeof o==="object")return "("+Object.keys(o).map(k=>k+":"+rison(o[k])).join(",")+")";
+ if(typeof o==="number")return String(o);
+ return "'"+encodeURIComponent(String(o).replace(/!/g,"!!").replace(/'/g,"!'")).replace(/%20/g,"+")+"'";
+}
+function godboltUrl(src,cpp){
+ const L=cpp?"c++":"c",comp=cpp?"g132":"cg132",nm=cpp?"C++":"C";
+ const sel={endColumn:1,endLineNumber:1,positionColumn:1,positionLineNumber:1,selectionStartColumn:1,selectionStartLineNumber:1,startColumn:1,startLineNumber:1};
+ const editor={h:"codeEditor",i:{filename:"1",fontScale:14,fontUsePx:"0",j:1,lang:L,selection:sel,source:src},l:"5",n:"0",o:nm+" source #1",t:"0"};
+ const exec={h:"executor",i:{argsPanelShown:"1",compilationPanelShown:"1",compiler:comp,compilerOutShown:"1",execArgs:"",execStdin:"",fontScale:14,fontUsePx:"0",j:1,lang:L,libs:[],options:"",overrides:[],runtimeTools:[],source:1,stdinPanelShown:"1",wrap:"1"},l:"5",n:"0",o:"Executor x86-64 gcc 13.2 ("+nm+", Editor #1)",t:"0"};
+ const col=g=>({g:[g],k:50,l:"4",n:"0",o:"",s:0,t:"0"});
+ const state={g:[{g:[col(editor),col(exec)],l:"2",n:"0",o:"",t:"0"}],version:4};
+ return "https://godbolt.org/e#"+rison(state).slice(1,-1);
+}
+let msgHandler=null;
+function clearMsg(){if(msgHandler){removeEventListener("message",msgHandler);msgHandler=null}}
+const PDF_FRAG="#navpanes=0&pagemode=none";   // panneau latéral de la visionneuse PDF masqué (Chrome/Edge, Firefox)
+/* Adresse de l'application KiCanvas pour un fichier publié sur GitHub */
+function kicanvasAppUrl(path){
+ if(mode!=="online"||!repoRef)return null;
+ const blob=`https://github.com/${repoRef.owner}/${repoRef.repo}/blob/${repoRef.branch}/${path.split("/").map(encodeURIComponent).join("/")}`;
+ return "https://kicanvas.org/?github="+encodeURIComponent(blob);
+}
 /* ---------- Ouverture d'un fichier / d'un dossier ---------- */
 let openToken=0;
 /* Droits des iframes de démonstration (même origine que le portail ou falstad.com) */
@@ -479,7 +557,7 @@ function falstadUrl(txt,menu=false){
  return "https://www.falstad.com/circuit/circuitjs.html?"+q.join("&");
 }
 function openFolder(item,focus){
- ++openToken;
+ const token=++openToken;clearMsg();
  cur=item;query="";activePath=null;$("#search").value="";
  renderNav(focus);
  if(item===rootItem){showWelcome();return}
@@ -492,32 +570,31 @@ function openFolder(item,focus){
  const st=document.createElement("span");st.className="muted";st.textContent=`${n} fichier${n>1?"s":""}`;
  b.onclick=async()=>{b.disabled=true;try{await downloadFolder(item,st)}finally{b.disabled=false}};
  toolbar.append(b,st);
- const ul=document.createElement("ul");ul.className="folder-list";
- item.children.forEach(c=>{
-  const li=document.createElement("li"),x=document.createElement("button");
-  x.type="button";x.className="linkbtn";x.textContent=`${icons[c.type]||"📄"} ${c.name}`;
-  x.onclick=()=>c.type==="folder"?openFolder(c):openFile(c);
-  li.append(x);ul.append(li);
- });
- content.append(ul);
+ /* README.md du dossier, sinon premier fichier .md, sinon rien */
+ const mds=item.children.filter(c=>c.type==="markdown");
+ const readme=mds.find(c=>/^readme\.(md|markdown)$/i.test(c.name))||mds[0];
+ if(readme)fetchText(urlOf(readme)).then(t=>{
+  if(token!==openToken)return;
+  const d=document.createElement("div");d.className="md";content.replaceChildren(d);renderMarkdown(d,t,readme);
+ }).catch(()=>{});
 }
 function openFile(file){
- activePath=file.path;
+ activePath=file.path;clearMsg();
  tree.querySelectorAll("button").forEach(b=>b.classList.toggle("active",!!b._item&&b._item.type!=="folder"&&b._item.path===activePath));
  $("#welcome").hidden=true;$("#viewer").hidden=false;
- $("#main").classList.toggle("wide",["pdf","text","html","falstad","code","video"].includes(file.type));
- $("#main").classList.toggle("app",["pdf","html","falstad","code","video"].includes(file.type));
+ $("#main").classList.toggle("wide",["pdf","text","html","falstad","code","video","wavedrom","kicad","image","drawio","godbolt"].includes(file.type));
+ $("#main").classList.toggle("app",["pdf","html","falstad","code","video","wavedrom","kicad","image","drawio","godbolt"].includes(file.type));
  $("#fileTitle").textContent=file.name;
  const bc=$("#breadcrumb");bc.hidden=false;bc.textContent=file.path;
  const url=urlOf(file);const token=++openToken;
  const toolbar=$("#toolbar"),content=$("#content");toolbar.replaceChildren();content.replaceChildren();
- const addLink=(label,download=false)=>{const a=document.createElement("a");a.className="btn";a.href=url;a.textContent=label;if(download)a.download=file.name;else a.target="_blank";toolbar.append(a)};
+ const addLink=(label,download=false,href=url)=>{const a=document.createElement("a");a.className="btn";a.href=href;a.textContent=label;if(download)a.download=file.name;else a.target="_blank";toolbar.append(a)};
  if(file.type==="markdown"){
   addLink("↗ Ouvrir le fichier brut");
   addLink("⬇ Télécharger le Markdown",true);
   content.textContent="Chargement du cours…";
   fetchText(url)
-   .then(md=>{if(token!==openToken)return;if(window.marked){content.innerHTML=marked.parse(md);}else{content.textContent=md;}})
+   .then(md=>{if(token!==openToken)return;renderMarkdown(content,md,file);})
    .catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce cours. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else if(file.type==="text"){
   addLink("↗ Ouvrir le fichier brut");
@@ -530,8 +607,8 @@ function openFile(file){
   }).catch(()=>{content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
  }else if(file.type==="pdf"){
   addLink("⬇ Télécharger le PDF",true);
-  addLink("↗ Ouvrir dans un nouvel onglet");
-  const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;content.append(frame);
+  addLink("↗ Ouvrir dans un nouvel onglet",false,url+PDF_FRAG);
+  const frame=document.createElement("iframe");frame.className="document";frame.src=url+PDF_FRAG;frame.title=file.name;content.append(frame);
  }else if(file.type==="html"){
   addLink("↗ Ouvrir dans un nouvel onglet");
   const frame=document.createElement("iframe");frame.className="document";frame.src=url;frame.title=file.name;
@@ -572,6 +649,88 @@ function openFile(file){
    toolbar.append(cp);if(tg)toolbar.append(tg);
    draw();content.replaceChildren(box);
   }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="wavedrom"){
+  addLink("⬇ Télécharger le fichier",true);
+  content.textContent="Chargement du chronogramme…";
+  fetchText(url).then(txt=>{
+   if(token!==openToken)return;
+   const box=document.createElement("div");box.className="wavebox";
+   content.replaceChildren(box);
+   try{
+    if(!window.WaveDrom)throw Error("bibliothèque WaveDrom indisponible (connexion internet requise)");
+    /* WaveJSON : JSON ou notation JavaScript (clés sans guillemets), comme dans l'éditeur WaveDrom */
+    const src=new Function("return (\n"+txt.trim().replace(/;+\s*$/,"")+"\n)")();
+    const out=document.createElement("div");out.id="WaveDrom_Display_0";box.append(out);
+    if(WaveDrom.RenderWaveForm)WaveDrom.RenderWaveForm(0,src,"WaveDrom_Display_");
+    else out.innerHTML=WaveDrom.onml.stringify(WaveDrom.renderAny(0,src,WaveSkin.default));
+    const b=document.createElement("button");b.type="button";b.className="btn";b.textContent="⬇ Exporter en SVG";
+    b.onclick=()=>{const svg=box.querySelector("svg");if(!svg)return;saveBlob(new Blob([new XMLSerializer().serializeToString(svg)],{type:"image/svg+xml"}),file.name.replace(/\.[^.]+$/,"")+".svg")};
+    toolbar.append(b);
+   }catch(e){
+    const p=document.createElement("p");p.className="notice";p.textContent="Chronogramme impossible à afficher : "+e.message;box.replaceChildren(p);
+   }
+  }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier. Vérifiez le chemin du fichier et que le site est publié.</p>';});
+ }else if(file.type==="kicad"){
+  addLink("⬇ Télécharger le fichier",true);
+  const app=kicanvasAppUrl(file.path);
+  if(app){const a=document.createElement("a");a.className="btn";a.href=app;a.target="_blank";a.rel="noopener";a.textContent="↗ Ouvrir dans KiCanvas (nouvel onglet)";toolbar.append(a)}
+  const frame=document.createElement("iframe");frame.className="document";frame.title=file.name;
+  applyFrameRights(frame);
+  const page=body=>`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#fff;font:14px system-ui,sans-serif}kicanvas-embed{display:block;width:100%;height:100%}</style><script type="module" src="${esc(KICANVAS_JS)}"><\/script></head><body>${body}</body></html>`;
+  const attrs='controls="full" controlslist="nooverlay"';
+  if(mode==="online"){
+   frame.srcdoc=page(`<kicanvas-embed src="${esc(new URL(file.path,location.href).href)}" ${attrs}></kicanvas-embed>`);
+   content.append(frame);
+  }else{                                             // mode local : le texte du fichier est donné en ligne à KiCanvas
+   content.textContent="Chargement du fichier…";
+   fetchText(url).then(txt=>{
+    if(token!==openToken)return;
+    const ty=/\.kicad_sch$/i.test(file.name)?"schematic":"board";
+    frame.srcdoc=page(`<kicanvas-embed ${attrs}><kicanvas-source type="${ty}" name="${esc(file.name)}">${esc(txt)}</kicanvas-source></kicanvas-embed>`);
+    content.replaceChildren(frame);
+   }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier.</p>';});
+  }
+ }else if(file.type==="image"){
+  addLink("⬇ Télécharger l’image",true);
+  addLink("↗ Ouvrir dans un nouvel onglet");
+  const box=document.createElement("div");box.className="imgbox";
+  const im=document.createElement("img");im.alt=file.name;im.src=url;im.title="Clic : taille réelle / taille ajustée";
+  im.onclick=()=>box.classList.toggle("full");
+  im.onerror=()=>{content.innerHTML='<p class="notice">Impossible d’afficher cette image (format non pris en charge par le navigateur).</p>'};
+  box.append(im);content.append(box);
+ }else if(file.type==="drawio"){
+  addLink("⬇ Télécharger le fichier",true);
+  const frame=document.createElement("iframe");frame.className="document";frame.title=file.name;
+  applyExternalRights(frame);
+  if(mode==="online"){
+   const abs=encodeURIComponent(new URL(file.path,location.href).href);
+   frame.src="https://viewer.diagrams.net/?highlight=0000ff&nav=1&layers=1&target=blank&title="+encodeURIComponent(file.name)+"#U"+abs;
+   const a=document.createElement("a");a.className="btn";a.href="https://app.diagrams.net/#U"+abs;a.target="_blank";a.rel="noopener";a.textContent="↗ Ouvrir dans diagrams.net (nouvel onglet)";toolbar.append(a);
+   content.append(frame);
+  }else{                                             // mode local : protocole « embed » de diagrams.net (le fichier ne quitte pas la page)
+   content.textContent="Chargement du diagramme…";
+   fetchText(url).then(xml=>{
+    if(token!==openToken)return;
+    msgHandler=e=>{
+     if(e.source!==frame.contentWindow)return;
+     let m;try{m=JSON.parse(e.data)}catch(x){return}
+     if(m&&m.event==="init")frame.contentWindow.postMessage(JSON.stringify({action:"load",xml,autosave:0,title:file.name}),"*");
+    };
+    addEventListener("message",msgHandler);
+    frame.src="https://embed.diagrams.net/?embed=1&ui=min&spin=1&proto=json&noSaveBtn=1&noExitBtn=1";
+    content.replaceChildren(frame);
+   }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier.</p>'});
+  }
+ }else if(file.type==="godbolt"){
+  addLink("⬇ Télécharger le fichier",true);
+  content.textContent="Chargement du code…";
+  fetchText(url).then(src=>{
+   if(token!==openToken)return;
+   const embed=godboltUrl(src,!/\.c\.link$/i.test(file.path));
+   const a=document.createElement("a");a.className="btn";a.href=embed.replace("godbolt.org/e#","godbolt.org/#");a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ Ouvrir dans un nouvel onglet";toolbar.append(a);
+   const frame=document.createElement("iframe");frame.className="document";frame.title=file.name;
+   applyExternalRights(frame);frame.src=embed;content.replaceChildren(frame);
+  }).catch(()=>{if(token===openToken)content.innerHTML='<p class="notice">Impossible de charger ce fichier.</p>'});
  }else if(file.type==="video"){
   addLink("⬇ Télécharger la vidéo",true);
   const v=document.createElement("video");v.className="player";v.controls=true;v.preload="metadata";v.playsInline=true;v.src=url;
@@ -605,6 +764,7 @@ function prettyName(s){
 }
 function fileType(path){
  const ext=path.split('.').pop().toLowerCase();
+ if(/\.(c|cpp|cc|cxx)\.link$/i.test(path))return 'godbolt';
  if(ext==='md'||ext==='markdown')return 'markdown';
  if(ext==='html'||ext==='htm')return 'html';
  if(ext==='pdf')return 'pdf';
@@ -615,6 +775,10 @@ function fileType(path){
  if(CODE_LANGS[ext])return 'code';
  if(VIDEO_EXT.includes(ext))return 'video';
  if(LINK_EXT.includes(ext))return 'link';
+ if(ext==='wavedrom'||ext==='wavejson')return 'wavedrom';
+ if(IMG_EXT.includes(ext))return 'image';
+ if(ext==='drawio'||ext==='dio')return 'drawio';
+ if(ext==='kicad_sch'||ext==='kicad_pcb')return 'kicad';
  return 'other';
 }
 function buildTree(paths){
@@ -635,7 +799,7 @@ function buildTree(paths){
   }).map(item=>{
    if(item.children.size>0||!item.path)return {name:prettyName(item.name),type:'folder',path:item.full,children:convert(item)};
    const ty=fileType(item.path);
-   return {name:ty==='link'?item.name.replace(/\.[^.]+$/,''):item.name,type:ty,path:item.path,lang:langOf(item.path)};
+   return {name:(ty==='link'||ty==='godbolt')?item.name.replace(/\.[^.]+$/,''):item.name,type:ty,path:item.path,lang:langOf(item.path)};
   });
  }
  return convert(root);
@@ -653,6 +817,7 @@ async function discoverRepositoryFiles(){
  const infoResponse=await fetch(`https://api.github.com/repos/${owner}/${repo}`);
  if(!infoResponse.ok)throw new Error('Impossible d’accéder au dépôt GitHub. Vérifiez que le dépôt est public et que son nom est correct.');
  const info=await infoResponse.json();
+ repoRef={owner,repo,branch:info.default_branch};
  const treeResponse=await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(info.default_branch)}?recursive=1`);
  if(!treeResponse.ok)throw new Error('GitHub n’a pas pu lire l’arborescence du dépôt.');
  const data=await treeResponse.json();
@@ -689,12 +854,12 @@ async function loadFromHandle(){
 async function chooseFolder(){
  if(window.showDirectoryPicker){
   try{dirHandle=await showDirectoryPicker({mode:"read"})}
-  catch(e){if(e&&e.name==="AbortError")return;dirHandle=null;$("#folderInput").click();return}
+  catch(e){if(e&&e.name==="AbortError")return;dirHandle=null;$("#folderInput").value="";$("#folderInput").click();return}
   await loadFromHandle();
- }else $("#folderInput").click();
+ }else{$("#folderInput").value="";$("#folderInput").click()}
 }
 $("#folderInput").addEventListener("change",e=>{
- const files=[...e.target.files];e.target.value="";
+ const files=[...e.target.files];
  if(!files.length)return;
  dirHandle=null;
  applyLocalFiles(files.map(f=>{const parts=(f.webkitRelativePath||f.name).split("/");parts.shift();return [parts.join("/"),f]}));
