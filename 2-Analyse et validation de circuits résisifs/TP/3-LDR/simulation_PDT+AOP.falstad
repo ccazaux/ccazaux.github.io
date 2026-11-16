@@ -1,31 +1,40 @@
 $ 1 0.000005 10.634267539816555 50 5 50 5e-11
-O 560 240 624 240 3 1
-r 128 272 128 352 0 20000
-r 128 128 128 208 0 10000
-a 416 240 560 240 9 11.999 0.001 1000000 6 8 100000
-g 128 384 128 416 0 0
-v 0 336 0 240 0 0 40 12 0 0 0.5
-g 0 384 0 416 0 0
-174 256 256 272 368 1 20000 0.5 Position Potentiomètre
-w 272 320 336 320 0
-w 336 320 336 256 0
-g 256 384 256 416 0 0
-w 128 352 128 384 0
-w 0 336 0 384 0
-w 0 240 0 128 0
-w 0 128 128 128 2
-w 400 224 128 224 0
-w 128 224 128 208 0
-w 128 224 128 272 0
-w 256 256 256 128 0
-w 256 128 128 128 0
-x -86 40 463 43 4 16 Le\spont\sdiviseur\sde\sgauche\simpose\sune\stension\sfixe\ssur\sla\sbroche\s"-"\sde\sl'AOP
-x -85 65 802 68 4 16 Le\spont\sdiviseur\sde\sdroite\s\simpose\sune\stension\svariable\sen\sfonction\sde\sla\sposition\sdu\spotentiomètre\s\ssur\sla\sbroche\s"\p"\sde\sl'AOP
-x -86 91 420 94 4 16 Si\sV\p\s>\sV-,\sla\stension\sde\ssortie\sde\sl'AOP\sVs\s\q\sVcc\s\q\s12V,\ssinon\sVs\s\q\s0V.
-w 400 224 416 224 2
-w 400 256 416 256 2
-162 560 304 560 384 2 default-led 0 1 0 0.01
-r 560 240 560 304 0 1000
-g 560 384 560 416 0 0
-x 429 186 608 189 4 12 AOP\s(Amplificateur\sOPérationnel)
-w 336 256 400 256 0
+r 96 288 96 368 0 20000
+r 96 144 96 224 0 10000
+a 384 256 528 256 9 11.999 0.001 1000000 6 8 100000
+g 96 400 96 432 0 0
+v -32 352 -32 256 0 0 40 12 0 0 0.5
+g -32 400 -32 432 0 0
+174 224 272 240 384 1 20000 0.5 Position Potentiomètre
+w 240 336 304 336 0
+w 304 336 304 272 0
+g 224 400 224 432 0 0
+w 96 368 96 400 0
+w -32 352 -32 400 0
+w -32 256 -32 144 0
+w -32 144 96 144 2
+w 368 240 96 240 0
+w 96 240 96 224 0
+w 96 240 96 288 0
+w 224 272 224 144 0
+w 224 144 96 144 0
+x -86 20 472 23 4 16 Le\spont\sdiviseur\sde\sgauche\simpose\sune\stension\sfixe\ssur\sla\sbroche\s"-"\sde\sl'AOP\s.
+x -85 45 811 48 4 16 Le\spont\sdiviseur\sde\sdroite\s\simpose\sune\stension\svariable\sen\sfonction\sde\sla\sposition\sdu\spotentiomètre\s\ssur\sla\sbroche\s"\p"\sde\sl'AOP\s.
+x -86 71 426 74 4 16 Si\sV\p\s>\sV-,\sla\stension\sde\ssortie\sde\sl'AOP\sVs\s\q\sVcc\s\q\s12V,\ssinon\sVs\s\q\s0V\s.
+w 368 240 384 240 2
+w 368 272 384 272 2
+162 528 320 528 400 2 default-led 0 1 0 0.01
+r 528 256 528 320 0 1000
+g 528 400 528 432 0 0
+x 397 202 576 205 4 12 AOP\s(Amplificateur\sOPérationnel)
+w 304 272 368 272 0
+x -86 99 442 102 4 16 On\snote\sε\sla\sdifférence\sV\p\s-\sV-,\sdonc\ssi\sε>0,\sVs\s\q\sVcc\q12V,\ssinon\sVs\s\q\s0V\s.
+x -87 -6 403 -3 4 30 Montage\sAOP\sen\smode\scomparateur
+x 492 250 516 253 4 12 Vs\s\q
+x -18 137 12 140 4 12 Vcc\s\q
+x 333 232 358 235 4 12 V\p\s\q
+x 333 266 354 269 4 12 V-\s\q
+w 528 256 560 256 2
+x 186 339 194 342 4 12 P
+x 61 331 76 334 4 12 R1
+x 58 192 73 195 4 12 R2
