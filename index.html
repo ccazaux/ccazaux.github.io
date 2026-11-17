@@ -166,6 +166,7 @@ function showWelcome(){
 }
 function resetView(){
  activePath=null;query="";$("#search").value="";
+ shownPath="";syncHash("");setTitle("");
  showWelcome();
 }
 function updateModeButtons(){
@@ -188,7 +189,7 @@ async function onModeClick(m){
 
 function allFiles(items,out=[]){items.forEach(x=>{if(x.type==="folder")allFiles(x.children,out);else out.push(x)});return out}
 /* ---------- Navigation dans le menu : un seul dossier affiché à la fois ---------- */
-let rootItem=null,cur=null,activePath=null,query="";
+let rootItem=null,cur=null,activePath=null,query="",restoring=false,shownPath="";
 const pathIndex=new Map();
 function indexTree(){
  pathIndex.clear();
@@ -234,11 +235,24 @@ function renderNav(focus){
   if(t)t.focus();
  }
 }
+/* ---------- Adresse (URL) : lien direct vers un dossier ou un fichier, bouton « Précédent » du navigateur ---------- */
+const BASE_TITLE=document.title;
+const hashOf=p=>p?"#"+p.split("/").map(encodeURIComponent).join("/"):"";
+function curHashPath(){try{return decodeURIComponent(location.hash.slice(1))}catch(e){return location.hash.slice(1)}}
+function setTitle(name){document.title=name?name+" — "+BASE_TITLE:BASE_TITLE}
+function syncHash(path){
+ if(restoring||curHashPath()===path)return;
+ try{history.pushState(null,"",location.pathname+location.search+hashOf(path))}
+ catch(e){try{location.hash=hashOf(path)}catch(x){}}
+}
 function applyHash(){
- let p="";try{p=decodeURIComponent(location.hash.slice(1))}catch(e){}
- if(!p)return;
- const d=pathIndex.get("d:"+p),f=pathIndex.get("f:"+p);
- if(d)openFolder(d);else if(f){openFolder(f.parent);openFile(f)}
+ if(!rootItem)return;
+ const p=curHashPath();
+ if(p===shownPath)return;
+ const d=p?pathIndex.get("d:"+p):rootItem,f=p?pathIndex.get("f:"+p):null;
+ restoring=true;
+ try{if(d)openFolder(d);else if(f){openFolder(f.parent);openFile(f)}}
+ finally{restoring=false}
 }
 /* Lecture d'un fichier texte : UTF-8 en priorité, repli sur Windows-1252 (accents des anciens .txt) */
 async function fetchText(url){
@@ -290,7 +304,7 @@ async function downloadFolder(item,statusEl){
 
 /* ---------- Menu contextuel (clic droit dans l'arborescence) ---------- */
 function openInNewTab(item){
- if(item.type==="folder"){window.open(location.href.split("#")[0]+"#"+encodeURIComponent(item.path),"_blank");return}
+ if(item.type==="folder"){window.open(location.href.split("#")[0]+hashOf(item.path),"_blank");return}
  if(item.type==="falstad"){
   const w=window.open("about:blank","_blank");if(w)w.opener=null;
   fetchText(urlOf(item)).then(t=>{if(w)w.location.href=falstadUrl(t,true)}).catch(()=>{if(w)w.close()});
@@ -559,6 +573,7 @@ function falstadUrl(txt,menu=false){
 function openFolder(item,focus){
  const token=++openToken;clearMsg();
  cur=item;query="";activePath=null;$("#search").value="";
+ shownPath=item.path||"";syncHash(shownPath);setTitle(item.name);
  renderNav(focus);
  if(item===rootItem){showWelcome();return}
  $("#welcome").hidden=true;$("#viewer").hidden=false;$("#main").classList.remove("wide","app");
@@ -580,6 +595,7 @@ function openFolder(item,focus){
 }
 function openFile(file){
  activePath=file.path;clearMsg();
+ shownPath=file.path;syncHash(file.path);setTitle(file.name);
  tree.querySelectorAll("button").forEach(b=>b.classList.toggle("active",!!b._item&&b._item.type!=="folder"&&b._item.path===activePath));
  $("#welcome").hidden=true;$("#viewer").hidden=false;
  $("#main").classList.toggle("wide",["pdf","text","html","falstad","code","video","wavedrom","kicad","image","drawio","godbolt"].includes(file.type));
@@ -838,7 +854,7 @@ function showTree(paths,emptyMsg){
  courses=buildTree(paths);
  tree.replaceChildren();
  if(!courses.length){rootItem=null;tree.textContent=emptyMsg;return false}
- indexTree();renderNav();return true;
+ indexTree();renderNav();applyHash();return true;
 }
 function applyLocalFiles(entries){
  blobCache.forEach(u=>URL.revokeObjectURL(u));blobCache.clear();localFiles.clear();
@@ -886,7 +902,7 @@ async function initializePortal(){
  try{
   const paths=await discoverRepositoryFiles();
   if(mode!=="online")return;                         // changement de mode pendant le chargement
-  if(showTree(paths,'Aucun document trouvé dans les sous-dossiers du dépôt.'))applyHash();
+  showTree(paths,'Aucun document trouvé dans les sous-dossiers du dépôt.');
  }catch(error){
   status.textContent=error.message+' Vous pouvez aussi vérifier les paramètres du dépôt dans index.html.';
  }
@@ -905,6 +921,7 @@ tree.addEventListener("keydown",e=>{
  if(e.key==="ArrowDown")bs[Math.min(i+1,bs.length-1)].focus();
  else if(i>0)bs[i-1].focus();else $("#search").focus();
 });
+addEventListener("popstate",applyHash);addEventListener("hashchange",applyHash);
 toggleBtn.addEventListener("click",()=>setNav(layout.classList.contains("sidebar-collapsed")));
 
 /* ---------- Largeur du menu réglable à la souris ---------- */
