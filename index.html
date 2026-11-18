@@ -303,6 +303,13 @@ async function downloadFolder(item,statusEl){
 }
 
 /* ---------- Menu contextuel (clic droit dans l'arborescence) ---------- */
+const GODBOLT_LABEL="▶ Ouvrir avec godbolt (langage C)";   // libellé du menu contextuel des fichiers .c
+/* Ouvre le code C dans Compiler Explorer (godbolt.org), langage C, avec la fenêtre d'exécution */
+function openInGodbolt(item){
+ const w=window.open("about:blank","_blank");if(w)w.opener=null;
+ fetchText(urlOf(item)).then(t=>{if(w)w.location.href=godboltUrl(t,false).replace("godbolt.org/e#","godbolt.org/#")})
+  .catch(()=>{if(w)w.close();toast("Impossible de lire le fichier")});
+}
 function openInNewTab(item){
  if(item.type==="folder"){window.open(location.href.split("#")[0]+hashOf(item.path),"_blank");return}
  if(item.type==="falstad"){
@@ -335,6 +342,7 @@ function showMenu(e,item){
   add("⬇ Télécharger le dossier (.zip)",()=>downloadFolder(item,null));
  }else{
   add("↗ Ouvrir dans un nouvel onglet",()=>openInNewTab(item));
+  if(item.type==="code"&&/\.c$/i.test(item.name))add(GODBOLT_LABEL,()=>openInGodbolt(item));
   add("⬇ Télécharger le fichier",()=>downloadFile(item));
  }
  document.body.append(m);

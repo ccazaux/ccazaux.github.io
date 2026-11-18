@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz – Électricité en situation</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5d6678; --border:#d9dde5;
+  --accent:#2457d6; --ok:#1a8f4c; --okbg:#e6f6ec; --ko:#c62828; --kobg:#fdeaea; --part:#b26a00; --partbg:#fff3df; --code:#eef1f6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171d; --card:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --border:#333a47;
+    --accent:#6c9bff; --ok:#4cc27f; --okbg:#173325; --ko:#ff7b7b; --kobg:#3a1c1c; --part:#ffb54d; --partbg:#3a2b12; --code:#262c37;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:780px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:.95rem;margin:0 0 2px;color:var(--accent);letter-spacing:.03em}
+.card .qt{font-weight:700;text-transform:uppercase;font-size:.9rem;margin:0 0 8px}
+.card p{margin:0 0 8px}
+.ctx{font-style:italic;color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+input[type=text]{width:140px;padding:8px 10px;font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;
+  border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.unit{color:var(--muted)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--accent)}
+.svgwrap{overflow-x:auto;margin:6px 0 10px}
+svg{max-width:100%;height:auto}
+#result{display:none}
+.score{font-size:2rem;font-weight:700;margin:0}
+.item{border-left:5px solid var(--border)}
+.item.ok{border-left-color:var(--ok)}
+.item.part{border-left-color:var(--part)}
+.item.ko{border-left-color:var(--ko)}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.85rem;margin-left:8px}
+.badge.ok{background:var(--okbg);color:var(--ok)}
+.badge.part{background:var(--partbg);color:var(--part)}
+.badge.ko{background:var(--kobg);color:var(--ko)}
+.exp{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Quiz : l’électricité en situation</h1>
+  <p class="sub">10 questions, une note sur 10, corrigé détaillé à la fin. Les valeurs changent à chaque nouveau test.
+  Pour les réponses numériques, saisissez uniquement le nombre (virgule ou point) dans l’unité demandée ; le résultat peut parfois être négatif.<br>
+  Continuez à vous entraîner (en conditions d’examen, c’est-à-dire avec calculatrice, papier, stylo) jusqu’à obtenir 100 % de réussite.</p>
+
+  <div id="quiz"></div>
+
+  <div class="btns" id="actions">
+    <button type="button" id="submit">Valider et voir ma note</button>
+    <button type="button" class="sec" id="restart">Nouveau test</button>
+  </div>
+
+  <div id="result">
+    <div class="card"><p class="score" id="score"></p><p id="comment"></p></div>
+    <h2 style="margin:18px 0 10px">Corrigé</h2>
+    <div id="corrige"></div>
+    <div class="btns"><button type="button" id="restart2">Refaire un test avec d’autres valeurs</button></div>
+  </div>
+</main>
+
+<script>
+/* ================= Outils généraux ================= */
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[rnd(0, a.length - 1)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmt = x => String(Math.round(x * 1e6) / 1e6).replace('.', ',').replace('-', '−');
+const sub = (b, i) => `${b}<sub>${i}</sub>`;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const ctx = t => `<span class="ctx">${t}</span><br>`;
+
+function parseNum(s) {
+  s = String(s || '').trim().replace(/\s/g, '').replace(',', '.').replace('−', '-');
+  return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : null;
+}
+
+/* ================= Outils SVG ================= */
+const lab = (b, i) => `${b}<tspan dy="4" font-size="11">${i}</tspan>`;
+const T = (x, y, html, anchor = 'middle') =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="15" fill="currentColor">${html}</text>`;
+const wire = (x1, y1, x2, y2) =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+const S = {
+  dot: (x, y) => `<circle cx="${x}" cy="${y}" r="4.5" fill="currentColor"/>`,
+  term: (x, y) => `<circle cx="${x}" cy="${y}" r="4.5" style="fill:var(--card)" stroke="currentColor" stroke-width="2"/>`,
+  resH: (cx, cy) => `<rect x="${cx - 20}" y="${cy - 8}" width="40" height="16" style="fill:var(--card)" stroke="currentColor" stroke-width="2"/>`,
+  resV: (cx, cy) => `<rect x="${cx - 8}" y="${cy - 20}" width="16" height="40" style="fill:var(--card)" stroke="currentColor" stroke-width="2"/>`,
+  gen: (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="16" style="fill:var(--card)" stroke="currentColor" stroke-width="2"/>
+    <text x="${cx}" y="${cy - 3.5}" text-anchor="middle" font-size="14" fill="currentColor">+</text>
+    <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="14" fill="currentColor">−</text>`
+};
+const head = (x, y, a) => {
+  const L = 11, W = 5, bx = x - L * Math.cos(a), by = y - L * Math.sin(a), px = -Math.sin(a) * W, py = Math.cos(a) * W;
+  return `<polygon points="${x},${y} ${bx + px},${by + py} ${bx - px},${by - py}" style="fill:var(--accent)"/>`;
+};
+const headC = (x, y, a) => {   /* pointe de flèche noire (symboles) */
+  const L = 8, W = 4, bx = x - L * Math.cos(a), by = y - L * Math.sin(a), px = -Math.sin(a) * W, py = Math.cos(a) * W;
+  return `<polygon points="${x},${y} ${bx + px},${by + py} ${bx - px},${by - py}" fill="currentColor"/>`;
+};
+const arrow = (x1, y1, x2, y2) => {
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  return `<line x1="${x1}" y1="${y1}" x2="${x2 - 8 * Math.cos(a)}" y2="${y2 - 8 * Math.sin(a)}" style="stroke:var(--accent)" stroke-width="2"/>${head(x2, y2, a)}`;
+};
+const ground = (x, y) => wire(x - 14, y, x + 14, y) + wire(x - 9, y + 6, x + 9, y + 6) + wire(x - 4, y + 12, x + 4, y + 12);
+const svgWrap = (w, h, inner, aria) =>
+  `<div class="svgwrap"><svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${aria}" style="color:var(--text)">${inner}</svg></div>`;
+
+/* LED verticale (courant du haut vers le bas) */
+function ledV(cx, cy) {
+  const sA = (x, y) => wire(x, y, x + 8, y - 8) + headC(x + 12, y - 12, -Math.PI / 4);
+  return `<polygon points="${cx - 10},${cy - 10} ${cx + 10},${cy - 10} ${cx},${cy + 8}" style="fill:var(--card)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>`
+    + wire(cx - 10, cy + 8, cx + 10, cy + 8) + sA(cx + 14, cy - 2) + sA(cx + 14, cy + 8);
+}
+
+/* Résistances en parallèle entre A et B */
+function parDiagram(names) {
+  const n = names.length, xs = names.map((_, i) => 110 + 90 * i), yT = 30, yB = 150, yM = 90, W = xs[n - 1] + 70, H = 185;
+  let s = wire(40, yT, xs[n - 1], yT) + wire(40, yB, xs[n - 1], yB);
+  xs.forEach(x => { s += wire(x, yT, x, yB); });
+  xs.forEach((x, i) => {
+    s += S.resV(x, yM) + T(x + 16, yM - 3, names[i].a, 'start');
+    if (names[i].b) s += T(x + 16, yM + 14, names[i].b, 'start');
+    if (i < n - 1) s += S.dot(x, yT) + S.dot(x, yB);
+  });
+  s += S.term(40, yT) + S.term(40, yB) + T(40, yT - 12, 'A') + T(40, yB + 24, 'B');
+  return svgWrap(W, H, s, 'Résistances en parallèle entre A et B');
+}
+
+/* Expression « a − b + c = 0 » à partir de termes {n, s} */
+const eq = terms => terms.map((t, i) => i === 0 ? (t.s < 0 ? '− ' : '') + t.n : (t.s < 0 ? ' − ' : ' + ') + t.n).join('') + ' = 0';
+
+/* ================= Questions ================= */
+
+/* Q1 : addition des tensions (une tension donnée dans l'autre sens) */
+function q1() {
+  const P = ['A', 'B', 'C', 'D', 'E', 'F'], v = [0, 1, 2, 3, 4].map(() => rnd(10, 15)), r = rnd(0, 4);
+  const name = i => i === r ? sub('U', P[i + 1] + P[i]) : sub('U', P[i] + P[i + 1]);
+  const lines = v.map((x, i) => `${name(i)} = ${x} V`).join('<br>');
+  const ans = v.reduce((s, x, i) => s + (i === r ? -x : x), 0);
+  const expr = v.map((x, i) => (i === 0 ? (i === r ? '− ' : '') : (i === r ? ' − ' : ' + ')) + x).join('');
+  return {
+    title: 'Addition des tensions', kind: 'num',
+    text: `${ctx('Vous testez un circuit de charge à cinq étages en série ; vous relevez ces tensions :')}${lines}<br>
+           Calculer ${sub('U', 'AF')}, la tension aux bornes de l’ensemble (en volts).`,
+    parts: [{ label: sub('U', 'AF') + ' =', ans, unit: 'V' }],
+    exp: `Loi d’addition des tensions : ${sub('U', 'AF')} = ${sub('U', 'AB')} + ${sub('U', 'BC')} + ${sub('U', 'CD')} + ${sub('U', 'DE')} + ${sub('U', 'EF')}.<br>
+          Attention au sens : ${name(r)} est mesurée dans l’autre sens, donc ${sub('U', P[r] + P[r + 1])} = −${name(r)} = −${v[r]} V.<br>
+          ${sub('U', 'AF')} = ${expr} = <b>${fmt(ans)} V</b>.`
+  };
+}
+
+/* Q3 : loi des mailles (une flèche peut être inversée) */
+function q3() {
+  const UG = pick([12, 18, 24]), t1 = rnd(2, UG - 4), t2 = rnd(2, UG - t1 - 2), t3 = UG - t1 - t2, t = [t1, t2, t3];
+  const u = rnd(0, 2), rev = Math.random() < 0.5;
+  const ans = rev ? -t[u] : t[u];
+  const rv = i => i === u && rev;
+  let s = wire(100, 70, 380, 70) + wire(380, 70, 380, 220) + wire(380, 220, 100, 220) + wire(100, 220, 100, 70);
+  s += S.gen(100, 145) + S.resH(240, 70) + S.resV(380, 145) + S.resH(240, 220);
+  s += (rv(0) ? arrow(195, 38, 285, 38) : arrow(285, 38, 195, 38)) + T(240, 26, lab('U', 1));
+  s += (rv(1) ? arrow(424, 100, 424, 190) : arrow(424, 190, 424, 100)) + T(438, 150, lab('U', 2), 'start');
+  s += (rv(2) ? arrow(285, 252, 195, 252) : arrow(195, 252, 285, 252)) + T(240, 274, lab('U', 3));
+  s += arrow(60, 190, 60, 100) + T(46, 150, lab('U', 'G'), 'end');
+  s += T(240, 98, lab('R', 1)) + T(352, 150, lab('R', 2), 'end') + T(240, 196, lab('R', 3)) + T(124, 150, 'G', 'start');
+  const known = [0, 1, 2].filter(i => i !== u).map(i => `${sub('U', i + 1)} = ${t[i]} V`).join(' ; ');
+  const terms = [{ n: sub('U', 'G'), s: 1 }, ...[0, 1, 2].map(i => ({ n: sub('U', i + 1), s: rv(i) ? 1 : -1 }))];
+  const numeric = `${UG}` + [0, 1, 2].filter(i => i !== u).map(i => ` − ${t[i]}`).join('');
+  return {
+    title: 'Loi des mailles', kind: 'num', vis: svgWrap(500, 290, s, 'Maille avec un générateur et trois résistances'),
+    text: `${ctx('Vous dépannez un module d’alimentation ; vous mesurez ces tensions dans une maille :')}
+           ${sub('U', 'G')} = ${UG} V ; ${known}.<br>
+           Calculer ${sub('U', u + 1)} en tenant compte du sens de sa flèche (en volts, le résultat peut être négatif).`,
+    parts: [{ label: sub('U', u + 1) + ' =', ans, unit: 'V' }],
+    exp: `On parcourt la maille dans le sens horaire : une tension compte + si sa flèche est dans le sens du parcours, − sinon.<br>
+          <b>${eq(terms)}</b><br>
+          ${numeric} ${rv(u) ? '+' : '−'} ${sub('U', u + 1)} = 0, donc ${sub('U', u + 1)} = <b>${fmt(ans)} V</b>.
+          ${rev ? `<br>Ici la flèche de ${sub('U', u + 1)} est dans le sens horaire : la valeur négative signifie que la tension réelle est de sens opposé à la flèche.`
+                : ''}`
+  };
+}
+
+/* Q4 : pont diviseur de tension */
+function q4() {
+  const [r, rt] = pick([[1 / 2, 12], [1 / 3, 12], [2 / 3, 12], [1 / 4, 12], [3 / 4, 12]]);
+  const Vc = pick([12, 24]), R2 = r * rt, R1 = rt - R2, Vm = Vc * r;
+  let s = wire(100, 30, 140, 30) + wire(140, 30, 140, 190) + wire(140, 110, 200, 110);
+  s += S.resV(140, 70) + S.resV(140, 150) + S.dot(140, 110) + S.term(100, 30) + S.term(200, 110) + ground(140, 190);
+  s += arrow(60, 190, 60, 30) + T(48, 115, lab('V', 'c'), 'end') + arrow(236, 190, 236, 110) + T(250, 155, lab('V', 'm'), 'start');
+  s += T(156, 74, lab('R', 1), 'start') + T(156, 154, lab('R', 2), 'start');
+  const vis = svgWrap(300, 215, s, 'Pont diviseur de tension');
+  if (Math.random() < 0.5) {
+    return {
+      title: 'Pont diviseur de tension', kind: 'num', vis,
+      text: `${ctx('Vous adaptez la tension de sortie d’un capteur à l’entrée d’une carte d’acquisition.')}
+             ${sub('V', 'c')} = ${Vc} V ; ${sub('R', 1)} = ${R1} kΩ ; ${sub('R', 2)} = ${R2} kΩ. Calculer ${sub('V', 'm')} (en volts), la sortie étant à vide.`,
+      parts: [{ label: sub('V', 'm') + ' =', ans: Vm, unit: 'V' }],
+      exp: `Pont diviseur de tension : ${sub('V', 'm')} = ${sub('V', 'c')} × ${sub('R', 2)} / (${sub('R', 1)} + ${sub('R', 2)})
+            = ${Vc} × ${R2} / (${R1} + ${R2}) = ${Vc} × ${R2} / ${rt} = <b>${fmt(Vm)} V</b>.`
+    };
+  }
+  return {
+    title: 'Pont diviseur de tension', kind: 'num', vis,
+    text: `${ctx('Vous adaptez la tension de sortie d’un capteur à l’entrée d’une carte d’acquisition.')}
+           ${sub('V', 'c')} = ${Vc} V ; ${sub('R', 1)} = ${R1} kΩ. On veut obtenir ${sub('V', 'm')} = ${fmt(Vm)} V (sortie à vide).
+           Calculer la valeur de ${sub('R', 2)} (en kΩ).`,
+    parts: [{ label: sub('R', 2) + ' =', ans: R2, unit: 'kΩ' }],
+    exp: `${sub('V', 'm')} = ${sub('V', 'c')} × ${sub('R', 2)} / (${sub('R', 1)} + ${sub('R', 2)}), donc
+          ${sub('R', 2)} = ${sub('R', 1)} × ${sub('V', 'm')} / (${sub('V', 'c')} − ${sub('V', 'm')}) = ${R1} × ${fmt(Vm)} / (${Vc} − ${fmt(Vm)}) = <b>${fmt(R2)} kΩ</b>.`
+  };
+}
+
+/* Q5 : potentiomètre et résistances talons */
+function q5() {
+  const U = pick([12, 24]), Tt = pick([6, 12]);
+  let r1, p, r2;
+  do { r1 = rnd(1, Tt - 3); p = rnd(2, Tt - r1 - 1); r2 = Tt - r1 - p; } while (r2 < 1);
+  const umin = U * r2 / Tt, umax = U * (p + r2) / Tt;
+  const umid = U * (r2 + p / 2) / Tt;
+  let s = wire(120, 25, 120, 275) + S.resV(120, 80) + S.resV(120, 155).replace('height="40"', 'height="60"').replace(`y="${155 - 20}"`, `y="${155 - 30}"`) + S.resV(120, 230);
+  s += wire(230, 155, 138, 155) + headC(128, 155, Math.PI) + S.term(120, 25) + S.term(230, 155) + ground(120, 275);
+  s += T(120, 12, 'U') + T(230, 143, lab('U', 's')) + T(136, 84, lab('R', 1), 'start') + T(104, 159, 'P', 'end') + T(136, 234, lab('R', 2), 'start');
+  const vis = svgWrap(300, 300, s, 'Potentiomètre avec deux résistances talons');
+  if (Math.random() < 0.5) {
+    return {
+      title: 'Potentiomètre et résistances talons', kind: 'num', vis,
+      text: `${ctx('Vous réglez la vitesse d’un ventilateur avec un potentiomètre encadré de deux résistances talons.')}
+             U = ${U} V ; ${sub('R', 1)} = ${r1} kΩ ; P = ${p} kΩ ; ${sub('R', 2)} = ${r2} kΩ. Soit α la position du curseur (0 % = en bas, 100 % = en haut).
+             Calculer ${sub('U', 's')} (mesurée entre le curseur et la masse) pour la tension minimale (α = 0 %), la tension maximale (α = 100 %)
+             et la tension lorsque le potentiomètre est réglé à la moitié de sa course (α = 50 %).`,
+      parts: [{ label: sub('U', 's') + ' (α = 0 %) =', ans: umin, unit: 'V' },
+              { label: sub('U', 's') + ' (α = 100 %) =', ans: umax, unit: 'V' },
+              { label: sub('U', 's') + ' (α = 50 %) =', ans: umid, unit: 'V' }],
+      exp: `Les trois résistances sont en série : ${sub('R', 1)} + P + ${sub('R', 2)} = ${Tt} kΩ.<br>
+            α = 0 % (curseur en bas) : ${sub('U', 's')} = U × ${sub('R', 2)} / (${sub('R', 1)} + P + ${sub('R', 2)}) = ${U} × ${r2} / ${Tt} = <b>${fmt(umin)} V</b>.<br>
+            α = 100 % (curseur en haut) : ${sub('U', 's')} = U × (P + ${sub('R', 2)}) / (${sub('R', 1)} + P + ${sub('R', 2)}) = ${U} × ${p + r2} / ${Tt} = <b>${fmt(umax)} V</b>.<br>
+            α = 50 % : le curseur partage P en deux moitiés, donc ${sub('U', 's')} = U × (${sub('R', 2)} + P/2) / (${sub('R', 1)} + P + ${sub('R', 2)})
+            = ${U} × (${r2} + ${fmt(p / 2)}) / ${Tt} = <b>${fmt(umid)} V</b>.`
+    };
+  }
+  return {
+    title: 'Potentiomètre et résistances talons', kind: 'num', vis,
+    text: `${ctx('Vous réglez la vitesse d’un ventilateur avec un potentiomètre de ' + p + ' kΩ encadré de deux résistances talons.')}
+           U = ${U} V. Le cahier des charges impose ${sub('U', 's')} entre ${fmt(umin)} V et ${fmt(umax)} V.
+           Calculer ${sub('R', 1)} et ${sub('R', 2)} (en kΩ).`,
+    parts: [{ label: sub('R', 1) + ' =', ans: r1, unit: 'kΩ' }, { label: sub('R', 2) + ' =', ans: r2, unit: 'kΩ' }],
+    exp: `Appelons ${sub('R', 'tot')} = ${sub('R', 1)} + P + ${sub('R', 2)}. On a ${sub('U', 's,max')} − ${sub('U', 's,min')} = U × P / ${sub('R', 'tot')},
+          donc ${sub('R', 'tot')} = ${U} × ${p} / (${fmt(umax)} − ${fmt(umin)}) = ${Tt} kΩ.<br>
+          ${sub('U', 's,min')} = U × ${sub('R', 2)} / ${sub('R', 'tot')}, donc ${sub('R', 2)} = ${fmt(umin)} × ${Tt} / ${U} = <b>${r2} kΩ</b>.<br>
+          ${sub('R', 1)} = ${sub('R', 'tot')} − P − ${sub('R', 2)} = ${Tt} − ${p} − ${r2} = <b>${r1} kΩ</b>.`
+  };
+}
+
+/* Q6 : circuit avec LED */
+function q6() {
+  const Ub = pick([5, 9, 12]), Ul = pick([2, 3]), UR = Ub - Ul, I = pick([1, 2, 5, 10]);
+  const R = UR * 1000 / I, P = Ub * I, Rn = 2 * R;
+  let s = wire(100, 70, 380, 70) + wire(380, 70, 380, 220) + wire(380, 220, 100, 220) + wire(100, 220, 100, 70);
+  s += S.gen(100, 145) + S.resH(240, 70) + ledV(380, 145);
+  s += arrow(285, 38, 195, 38) + T(240, 26, lab('U', 'R'));
+  s += arrow(440, 190, 440, 100) + T(454, 150, lab('U', 'LED'), 'start');
+  s += arrow(60, 190, 60, 100) + T(46, 150, lab('U', 'batt'), 'end');
+  s += head(380, 108, Math.PI / 2) + T(366, 106, lab('I', 'LED'), 'end');
+  s += T(240, 98, 'R') + T(124, 150, 'batt', 'start') + T(352, 190, 'LED', 'end');
+  return {
+    title: 'Circuit avec LED', kind: 'num', vis: svgWrap(520, 260, s, 'Batterie, résistance et LED en série'),
+    text: `${ctx('Vous ajoutez un témoin de mise sous tension (LED) sur un capteur alimenté par batterie.')}
+           ${sub('U', 'batt')} = ${Ub} V ; ${sub('U', 'LED')} = ${Ul} V ; R = ${fmt(R)} Ω. Calculer ${sub('I', 'LED')} (en mA) et ${sub('P', 'batt')}, la puissance fournie par la batterie (en mW).
+           Pour diviser ${sub('P', 'batt')} par 2, quelle nouvelle valeur donner à R (en Ω), ${sub('U', 'LED')} restant égale à ${Ul} V ?`,
+    parts: [{ label: sub('I', 'LED') + ' =', ans: I, unit: 'mA' }, { label: sub('P', 'batt') + ' =', ans: P, unit: 'mW' }, { label: 'R′ =', ans: Rn, unit: 'Ω' }],
+    exp: `Loi des mailles : ${sub('U', 'batt')} = ${sub('U', 'R')} + ${sub('U', 'LED')}, donc ${sub('U', 'R')} = ${Ub} − ${Ul} = ${UR} V.<br>
+          Loi d’Ohm : ${sub('I', 'LED')} = ${sub('U', 'R')} / R = ${UR} / ${fmt(R)} = ${fmt(I / 1000)} A = <b>${I} mA</b>.<br>
+          ${sub('P', 'batt')} = ${sub('U', 'batt')} × ${sub('I', 'LED')} = ${Ub} V × ${I} mA = <b>${P} mW</b>.<br>
+          ${sub('U', 'batt')} étant constante, diviser ${sub('P', 'batt')} par 2 revient à diviser ${sub('I', 'LED')} par 2 (${fmt(I / 2)} mA) :
+          R′ = ${sub('U', 'R')} / ${sub('I', 'LED')}′ = ${UR} / ${fmt(I / 2000)} = <b>${fmt(Rn)} Ω</b> (soit 2 × R).<br>
+          La LED sera moins lumineuse, car son courant est divisé par 2.`
+  };
+}
+
+/* Q7 : assemblage de batteries */
+function battDiagram(ns, np) {
+  const gx = j => 110 + 90 * j, yT = 24, step = 56, cys = [...Array(ns)].map((_, k) => yT + 40 + step * k), yB = cys[ns - 1] + 40;
+  const W = gx(np - 1) + 60, H = yB + 34;
+  let s = wire(40, yT, gx(np - 1), yT) + wire(40, yB, gx(np - 1), yB);
+  for (let j = 0; j < np; j++) s += wire(gx(j), yT, gx(j), yB);
+  for (let j = 0; j < np; j++) {
+    cys.forEach(cy => { s += S.gen(gx(j), cy); });
+    if (j < np - 1) s += S.dot(gx(j), yT) + S.dot(gx(j), yB);
+  }
+  s += S.term(40, yT) + S.term(40, yB) + T(24, yT + 5, '+', 'end') + T(24, yB + 5, '−', 'end');
+  return svgWrap(W, H, s, `Assemblage de ${np} branches de ${ns} packs en série`);
+}
+function q7() {
+  const [Up, Ip] = pick([[12, 2.5], [6, 3], [24, 2]]);
+  let ns, np;
+  do { ns = rnd(2, 4); np = rnd(2, 4); } while (ns * np > 12);
+  const U = ns * Up, I = np * Ip;
+  return {
+    title: 'Assemblage de batteries', kind: 'num',
+    text: `${ctx('Vous concevez la batterie d’une trottinette électrique à partir de packs identiques.')}
+           Chaque pack fournit ${Up} V et au maximum ${fmt(Ip)} A. La batterie doit délivrer ${U} V et ${fmt(I)} A.
+           Combien faut-il de packs en série dans chaque branche, de branches en parallèle, et de packs au total ?`,
+    parts: [{ label: 'Packs en série par branche :', ans: ns, unit: '' }, { label: 'Branches en parallèle :', ans: np, unit: '' },
+            { label: 'Packs au total :', ans: ns * np, unit: '' }],
+    exp: `Les tensions des packs en série s’additionnent : ${sub('n', 's')} = ${U} / ${Up} = <b>${ns}</b> packs par branche.<br>
+          Les courants des branches en parallèle s’additionnent : ${sub('n', 'p')} = ${fmt(I)} / ${fmt(Ip)} = <b>${np}</b> branches.<br>
+          Total : ${ns} × ${np} = <b>${ns * np}</b> packs.${battDiagram(ns, np)}`
+  };
+}
+
+/* Q8 : résistance à ajouter en parallèle */
+function q8() {
+  const [R, Rt, Rx] = pick([[1000, 500, 1000], [1200, 400, 600], [600, 400, 1200], [900, 600, 1800], [1000, 800, 4000], [300, 200, 600]]);
+  return {
+    title: 'Résistances équivalentes', kind: 'num',
+    vis: parDiagram([{ a: 'R', b: `${R} Ω` }, { a: lab('R', 'x'), b: '?' }]),
+    text: `${ctx('Technicien de maintenance : une résistance CMS de ' + R + ' Ω doit devenir ' + Rt + ' Ω, mais vous ne voulez pas la dessouder.')}
+           Vous soudez une résistance ${sub('R', 'x')} en parallèle sur la résistance existante. Calculer ${sub('R', 'x')} (en Ω).`,
+    parts: [{ label: sub('R', 'x') + ' =', ans: Rx, unit: 'Ω' }],
+    exp: `Calcul littéral : 1/${sub('R', 'eq')} = 1/R + 1/${sub('R', 'x')}, donc 1/${sub('R', 'x')} = 1/${sub('R', 'eq')} − 1/R = (R − ${sub('R', 'eq')}) / (R × ${sub('R', 'eq')}),
+          soit <b>${sub('R', 'x')} = R × ${sub('R', 'eq')} / (R − ${sub('R', 'eq')})</b>.<br>
+          Application numérique : ${sub('R', 'x')} = ${R} × ${Rt} / (${R} − ${Rt}) = <b>${Rx} Ω</b>.<br>
+          Vérification : ${sub('R', 'eq')} = R × ${sub('R', 'x')} / (R + ${sub('R', 'x')}) = ${R} × ${Rx} / (${R} + ${Rx}) = ${Rt} Ω.
+          Une résistance en parallèle diminue toujours la résistance équivalente.`
+  };
+}
+
+/* Q9 : association série / parallèle */
+function q9() {
+  if (Math.random() < 0.5) {
+    const R1 = pick([100, 200, 300, 500, 1000]), R = pick([200, 400, 600, 1000, 2000]), Req = R1 + R / 2;
+    let s = wire(40, 50, 320, 50) + wire(40, 150, 320, 150) + wire(230, 50, 230, 150) + wire(320, 50, 320, 150);
+    s += S.resH(110, 50) + S.resV(230, 100) + S.resV(320, 100) + S.dot(230, 50) + S.dot(230, 150);
+    s += S.term(40, 50) + S.term(40, 150) + T(40, 34, 'A') + T(40, 174, 'B');
+    s += T(110, 30, lab('R', 1)) + T(110, 76, `${R1} Ω`);
+    s += T(246, 96, lab('R', 2), 'start') + T(246, 113, `${R} Ω`, 'start') + T(336, 96, lab('R', 3), 'start') + T(336, 113, `${R} Ω`, 'start');
+    return {
+      title: 'Résistances équivalentes', kind: 'num', vis: svgWrap(420, 190, s, 'Association série et parallèle'),
+      text: `${ctx('Vous mesurez la résistance vue par une alimentation sur un réseau de résistances CMS.')}
+             Calculer ${sub('R', 'eq')} entre A et B (en Ω).`,
+      parts: [{ label: sub('R', 'eq') + ' =', ans: Req, unit: 'Ω' }],
+      exp: `${sub('R', 2)} et ${sub('R', 3)} sont en parallèle : ${sub('R', 2)} // ${sub('R', 3)} = ${R} × ${R} / (${R} + ${R}) = ${R / 2} Ω.<br>
+            Cet ensemble est en série avec ${sub('R', 1)} : ${sub('R', 'eq')} = ${R1} + ${R / 2} = <b>${fmt(Req)} Ω</b>.`
+    };
+  }
+  const R = pick([300, 600, 900]), R3 = pick([R, 2 * R]), Req = 2 * R * R3 / (2 * R + R3);
+  let s = wire(60, 50, 300, 50) + wire(60, 150, 300, 150) + wire(60, 50, 60, 150) + wire(300, 50, 300, 150) + wire(20, 100, 60, 100) + wire(300, 100, 340, 100);
+  s += S.resH(130, 50) + S.resH(230, 50) + S.resH(180, 150) + S.dot(60, 100) + S.dot(300, 100) + S.term(20, 100) + S.term(340, 100);
+  s += T(20, 84, 'A') + T(340, 84, 'B');
+  s += T(130, 30, lab('R', 1)) + T(130, 76, `${R} Ω`) + T(230, 30, lab('R', 2)) + T(230, 76, `${R} Ω`);
+  s += T(180, 130, lab('R', 3)) + T(180, 176, `${R3} Ω`);
+  return {
+    title: 'Résistances équivalentes', kind: 'num', vis: svgWrap(380, 195, s, 'Association série et parallèle'),
+    text: `${ctx('Vous mesurez la résistance vue par une alimentation sur un réseau de résistances CMS.')}
+           Calculer ${sub('R', 'eq')} entre A et B (en Ω).`,
+    parts: [{ label: sub('R', 'eq') + ' =', ans: Req, unit: 'Ω' }],
+    exp: `${sub('R', 1)} et ${sub('R', 2)} sont en série : ${sub('R', 1)} + ${sub('R', 2)} = ${2 * R} Ω.<br>
+          Cet ensemble est en parallèle avec ${sub('R', 3)} : ${sub('R', 'eq')} = ${2 * R} × ${R3} / (${2 * R} + ${R3}) = <b>${fmt(Req)} Ω</b>.`
+  };
+}
+
+/* Q10 : capacité et énergie d'une batterie */
+function q10() {
+  const I = pick([5, 10, 20]), d = pick([10, 20, 30]), U = pick([5, 12]);
+  const Q = I * 24 * d / 1000, E = U * Q;
+  return {
+    title: 'Autonomie d’un capteur', kind: 'num',
+    text: `${ctx('Vous dimensionnez la batterie d’un capteur de crue qui doit fonctionner sans recharge.')}
+           Le capteur consomme en permanence ${I} mA sous ${U} V, pendant ${d} jours. Calculer la capacité minimale de la batterie (en Ah) puis l’énergie correspondante (en Wh).`,
+    parts: [{ label: 'Q =', ans: Q, unit: 'Ah' }, { label: 'E =', ans: E, unit: 'Wh' }],
+    exp: `Durée : ${d} × 24 = ${d * 24} h. Capacité : Q = I × t = ${I} mA × ${d * 24} h = ${I * d * 24} mAh = <b>${fmt(Q)} Ah</b>.<br>
+          Énergie : E = U × Q = ${U} V × ${fmt(Q)} Ah = <b>${fmt(E)} Wh</b>.`
+  };
+}
+
+/* Q11 : AOP en comparateur, un pont diviseur sur chaque entrée */
+function q11() {
+  const pairs = [[6, 6, 1 / 2], [8, 4, 1 / 3], [4, 8, 2 / 3], [9, 3, 1 / 4], [3, 9, 3 / 4]];
+  const Vcc = pick([12, 24]), k = pick([1, 2]);
+  let a, b;
+  do { a = pick(pairs); b = pick(pairs); } while (a[2] === b[2]);
+  const R1 = a[0] * k, R2 = a[1] * k, R3 = b[0] * k, R4 = b[1] * k;
+  const Vm = Vcc * a[2], Vp = Vcc * b[2], Vs = Vp > Vm ? Vcc : 0;
+  let s = '';
+  // pont diviseur de l'entrée − (en bas) : R1 puis R2
+  s += wire(30, 220, 60, 220) + wire(100, 220, 180, 220) + wire(220, 220, 250, 220) + wire(250, 220, 250, 232);
+  s += S.resH(80, 220) + S.resH(200, 220) + ground(250, 232) + S.term(30, 220) + T(30, 206, 'Vcc');
+  s += wire(140, 220, 140, 165) + wire(140, 165, 300, 165) + S.dot(140, 220);
+  s += T(80, 244, lab('R', 1)) + T(200, 244, lab('R', 2)) + T(220, 157, 'V−');
+  // pont diviseur de l'entrée + (en haut) : R3 puis R4
+  s += wire(30, 60, 60, 60) + wire(100, 60, 180, 60) + wire(220, 60, 250, 60) + wire(250, 60, 250, 75);
+  s += S.resH(80, 60) + S.resH(200, 60) + ground(250, 75) + S.term(30, 60) + T(30, 46, 'Vcc');
+  s += wire(140, 60, 140, 115) + wire(140, 115, 300, 115) + S.dot(140, 60);
+  s += T(80, 46, lab('R', 3)) + T(200, 46, lab('R', 4)) + T(220, 107, 'V+');
+  // amplificateur opérationnel : triangle, alimentation, sortie
+  s += wire(350, 115, 350, 70) + wire(350, 165, 350, 200) + wire(400, 140, 460, 140);
+  s += `<polygon points="300,90 300,190 400,140" style="fill:var(--card)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>`;
+  s += T(312, 120, '+', 'start') + T(312, 170, '−', 'start');
+  s += S.term(350, 70) + T(350, 56, 'Vcc') + ground(350, 200) + S.term(460, 140) + T(460, 124, lab('V', 's'));
+  return {
+    title: 'AOP en comparateur', kind: 'num', vis: svgWrap(520, 260, s, 'Amplificateur opérationnel en comparateur avec un pont diviseur sur chaque entrée'),
+    text: `${ctx('Vous réalisez un détecteur de seuil avec un AOP alimenté en tension simple (0 V ; Vcc).')}
+           Vcc = ${Vcc} V ; ${sub('R', 1)} = ${R1} kΩ ; ${sub('R', 2)} = ${R2} kΩ ; ${sub('R', 3)} = ${R3} kΩ ; ${sub('R', 4)} = ${R4} kΩ.
+           Rappel (AOP en comparateur) : si V+ &gt; V−, ${sub('V', 's')} = Vcc, sinon ${sub('V', 's')} = 0 V.
+           Calculer V−, V+, puis en déduire ${sub('V', 's')} (en volts).`,
+    parts: [{ label: 'V− =', ans: Vm, unit: 'V' }, { label: 'V+ =', ans: Vp, unit: 'V' }, { label: sub('V', 's') + ' =', ans: Vs, unit: 'V' }],
+    exp: `Chaque entrée est reliée à un pont diviseur de tension (le courant d’entrée de l’AOP est nul).<br>
+          V− = Vcc × ${sub('R', 2)} / (${sub('R', 1)} + ${sub('R', 2)}) = ${Vcc} × ${R2} / ${R1 + R2} = <b>${fmt(Vm)} V</b>.<br>
+          V+ = Vcc × ${sub('R', 4)} / (${sub('R', 3)} + ${sub('R', 4)}) = ${Vcc} × ${R4} / ${R3 + R4} = <b>${fmt(Vp)} V</b>.<br>
+          ${Vp > Vm ? `V+ = ${fmt(Vp)} V est supérieure à V− = ${fmt(Vm)} V, donc ${sub('V', 's')} = Vcc = <b>${Vcc} V</b>.`
+                    : `V+ = ${fmt(Vp)} V n’est pas supérieure à V− = ${fmt(Vm)} V, donc ${sub('V', 's')} = <b>0 V</b>.`}`
+  };
+}
+
+/* ================= Application ================= */
+let questions = [];
+
+function renderQuestion(q, i) {
+  const inputs = q.parts.map((p, j) => `<div class="row"><span>${p.label}</span>
+      <input type="text" id="q${i}_${j}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Réponse">
+      <span class="unit">${p.unit || ''}</span></div>`).join('');
+  return `<div class="card"><h2>Question ${i + 1} / 10</h2><p class="qt">${q.title}</p>
+          <p>${q.text}</p>${q.vis || ''}${inputs}</div>`;
+}
+
+function newTest() {
+  questions = [q1(), q3(), q4(), q5(), q6(), q7(), q8(), q9(), q10(), q11()];
+  $('#quiz').innerHTML = questions.map(renderQuestion).join('');
+  $('#result').style.display = 'none';
+  $('#actions').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function grade(q, i) {
+  let ok = 0; const user = [], ans = [];
+  q.parts.forEach((p, j) => {
+    const el = $(`#q${i}_${j}`); el.disabled = true;
+    const raw = el.value.trim(), v = parseNum(raw);
+    if (v !== null && Math.abs(v - p.ans) <= 1e-6 * Math.max(1, Math.abs(p.ans))) ok++;
+    user.push(`${p.label} ${raw ? esc(raw) : '(vide)'} ${p.unit || ''}`);
+    ans.push(`${p.label} <b>${fmt(p.ans)}</b> ${p.unit || ''}`);
+  });
+  return { pts: ok / q.parts.length, user: user.join(' ; '), ans: ans.join(' ; ') };
+}
+
+function submit() {
+  let total = 0, html = '';
+  questions.forEach((q, i) => {
+    const g = grade(q, i);
+    total += g.pts;
+    const cls = g.pts === 1 ? 'ok' : g.pts > 0 ? 'part' : 'ko';
+    const txt = g.pts === 1 ? 'Correct' : g.pts > 0 ? 'Partiellement correct' : 'Incorrect';
+    html += `<div class="card item ${cls}">
+      <h2>Question ${i + 1} / 10<span class="badge ${cls}">${txt}</span></h2>
+      <p class="qt">${q.title}</p>
+      <p>${q.text}</p>${q.vis || ''}
+      <p><b>Votre réponse :</b> ${g.user}<br><b>Réponse attendue :</b> ${g.ans}</p>
+      <div class="exp">${q.exp}</div></div>`;
+  });
+  const note = Math.round(total * 2) / 2;
+  $('#score').textContent = `Note : ${fmt(note)} / 10`;
+  $('#comment').textContent = note === 10 ? 'Parfait, aucune erreur !'
+    : note >= 8 ? 'Très bien, quelques détails à revoir.'
+    : note >= 5 ? 'Correct, relisez le corrigé des questions ratées.'
+    : 'À retravailler : lisez le corrigé puis refaites un test.';
+  $('#corrige').innerHTML = html;
+  $('#result').style.display = 'block';
+  $('#actions').style.display = 'none';
+  $('#result').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#submit').addEventListener('click', submit);
+$('#restart').addEventListener('click', newTest);
+$('#restart2').addEventListener('click', newTest);
+newTest();
+</script>
+</body>
+</html>
