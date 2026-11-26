@@ -1,0 +1,99 @@
+     _                              _       _        _                   _ 
+    | | ___  _   _ _ __ _ __   __ _| |   __| | ___  | |__   ___  _ __ __| |
+ _  | |/ _ \| | | | '__| '_ \ / _` | |  / _` |/ _ \ | '_ \ / _ \| '__/ _` |
+| |_| | (_) | |_| | |  | | | | (_| | | | (_| |  __/ | |_) | (_) | | | (_| |
+ \___/ \___/ \__,_|_|  |_| |_|\__,_|_|  \__,_|\___| |_.__/ \___/|_|  \__,_|
+                                                                         
+ _   _            _    _       _     
+| | | | __ _  ___| | _| | __ _| |__  
+| |_| |/ _` |/ __| |/ / |/ _` | '_ \ 
+|  _  | (_| | (__|   <| | (_| | |_) |
+|_| |_|\__,_|\___|_|\_\_|\__,_|_.__/ 
+
+
+Septembre/octobre : 
+Travaux, définition du hacklab, documentation et communication.
+Documents : Affiche, Charte, définition des activités.
+Travaux : cloisonnement pour fermeture salle, peinture, rangement de l’espace.
+Stockage des ressources ouvert sur www.hacklab.cazaux.org
+
+Semaine du lundi 27/11/2023 :  Ouverture officielle, derniers travaux en cours
+**Photos**
+Adrien J., Maxence O. (seconde année BTS Systèmes numériques en alternance)
+Romain B. (seconde année BTS Systèmes numériques en formation initiale)
+
+Matériel :
+Quelques tables et chaises ont été réquisitionnées. 
+Alain G gère la partie travaux et ameublement.
+Clément C. amène une imprimante 3D en prêt.
+Romain B, avec le support de Renaud a rassemblé des ordinateurs hors d’usage pour réparation.
+Adrien J. a ramené du filament PLA et un palpeur pour imprimante 3D.
+
+
+Semaine du lundi 4/12/2023 : 
+Montages  étagères et trétaux.
+Rangement et déménagement armoire.
+Réparation radiateurs Alain G
+
+Semaine du lundi 11/12/2023 : 
+Lundi : Réparation et autopsie de matériel électronique
+PC portable “délabré” sans disque dur, sans RAM, sans chargeur, connecteur d’alimentation embouti : Autopsie et peut être réparation. A continuer lundi prochain (Alexandre)
+lampe sur batterie ( 1STI2D)
+Multimètre (après tests, fusible HS)
+Initiation utilisation imprimante 3D (BTS CIEL)
+Démontage lecteur CD HS
+
+Semaine du lundi 18/12/2023 : 
+Démontage téléviseur récupéré HS, en vue de réparation.
+Installation windows XP sur ordinosaure
+Impression 3D
+Déplacement étagère et rangement des chutes de matériaux (restes de plan de travail…)
+Initiation soudage et dessoudage de composants
+Démarrage projet “vitrine” : des capteurs capacitifs sont soudés afin de faire une interface tactile à travers la vitre de la salle, pour contrôler des jeux ou des logiciels et promouvoir le BTS CIEL et le hacklab.
+
+
+Semaine du lundi 8/1/2024 : 
+
+Semaine écourtée (lundi de la rentrée banalisé)
+Radiateur à réparer : Composant à changer identifié (Alain G)
+Mise à disposition d’une fiche d’utilisation de l’imprimante 3D, rédigée par des élèves de BTSCIEL.
+
+Semaine du lundi 15/1/2024 : 
+Radiateur réparé : Composant identifié et remplacé (Alain G)
+Mise en place serveur NAS pour stockage et partage de fichiers 
+Récepteur radio samson ar99m réparé  (Clément C)
+Initiation linux : outils, lignes de commande. 
+Don de téléviseur à réparer (Laurent C)
+
+Semaine du lundi 22/1/2024 : 
+Impression 3d pour mini projets BTS CIEL 1a .
+Affichage posters (Alain)
+Commande RAM pour serveur (Clément et  Romain)
+Montage éclairage LED 
+Rangement / nettoyage.
+
+Semaine du lundi 29/1/2024 : 
+Initiation Linux : outils, lignes de commande et installation système (Clément Z)
+Préparation vitrine tactile avec TV donnée par Laurent C
+
+Semaine du lundi 5/2/2024 : 
+Restauration serveur (Romain B)
+Réparation Ampli audio Denon AVR-2801 (Alain G.)
+Réparation Ordinateur portable : Soudures refaites sur connecteur disque dur (Sany Z.)
+
+
+Semaine du lundi 12/2/2024 : 
+
+
+Semaine du lundi 19/2/2024 : 
+
+
+Semaine du lundi 26/2/2024 : 
+
+
+TODO :
+Réparation/Diagnostic TV -  
+Réparation multimètre
+Réparation switch HS (ne s’allume plus)
+Impression 3D pour vitrine
+Projet Log
