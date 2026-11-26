@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz – Calculs, préfixes et unités</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5d6678; --border:#d9dde5;
+  --accent:#2457d6; --ok:#1a8f4c; --okbg:#e6f6ec; --ko:#c62828; --kobg:#fdeaea; --part:#b26a00; --partbg:#fff3df; --code:#eef1f6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171d; --card:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --border:#333a47;
+    --accent:#6c9bff; --ok:#4cc27f; --okbg:#173325; --ko:#ff7b7b; --kobg:#3a1c1c; --part:#ffb54d; --partbg:#3a2b12; --code:#262c37;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:780px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:.95rem;margin:0 0 2px;color:var(--accent);letter-spacing:.03em}
+.card .qt{font-weight:700;text-transform:uppercase;font-size:.9rem;margin:0 0 8px}
+.card p{margin:0 0 8px}
+.ctx{font-style:italic;color:var(--muted)}
+.opts label{display:block;padding:6px 8px;border-radius:6px;cursor:pointer}
+.opts label:hover{background:var(--code)}
+.opts input{margin-right:8px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+input[type=text]{width:170px;padding:8px 10px;font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;
+  border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.unit{color:var(--muted);font-size:.9rem}
+.tbl{background:var(--code);border-radius:8px;padding:8px 12px;margin:6px 0 10px;font-size:.95rem}
+.tbl div{margin:2px 0}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--accent)}
+#result{display:none}
+.score{font-size:2rem;font-weight:700;margin:0}
+.item{border-left:5px solid var(--border)}
+.item.ok{border-left-color:var(--ok)}
+.item.part{border-left-color:var(--part)}
+.item.ko{border-left-color:var(--ko)}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.85rem;margin-left:8px}
+.badge.ok{background:var(--okbg);color:var(--ok)}
+.badge.part{background:var(--partbg);color:var(--part)}
+.badge.ko{background:var(--kobg);color:var(--ko)}
+.exp{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:.95rem}
+.exp ul{margin:4px 0 0;padding-left:20px}
+.note{color:var(--part);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Quiz : calculs, préfixes et unités</h1>
+  <p class="sub">10 questions, une note sur 10, corrigé détaillé à la fin. Les valeurs changent à chaque nouveau test.
+  Sauf indication contraire, répondez en notation ingénieur : la valeur, le préfixe le plus approprié et l’unité, par exemple <b>13,4 mV</b> ou <b>2,2 kΩ</b>
+  (virgule ou point décimal acceptés ; vous pouvez écrire « u » pour µ et « ohm » pour Ω). Pour un résultat arrondi, conservez les 3 chiffres significatifs
+  (<b>1,50 mV</b> et non 1,5 mV). Quand l’unité est déjà affichée à côté du champ, saisissez uniquement le nombre.<br>
+  Continuez à vous entraîner (en conditions d’examen, c’est-à-dire avec calculatrice, papier, stylo) jusqu’à obtenir 100 % de réussite.</p>
+
+  <div id="quiz"></div>
+
+  <div class="btns" id="actions">
+    <button type="button" id="submit">Valider et voir ma note</button>
+    <button type="button" class="sec" id="restart">Nouveau test</button>
+  </div>
+
+  <div id="result">
+    <div class="card"><p class="score" id="score"></p><p id="comment"></p></div>
+    <h2 style="margin:18px 0 10px">Corrigé</h2>
+    <div id="corrige"></div>
+    <div class="btns"><button type="button" id="restart2">Refaire un test avec d’autres valeurs</button></div>
+  </div>
+</main>
+
+<script>
+/* ================= Outils généraux ================= */
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[rnd(0, a.length - 1)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sub = (b, i) => `${b}<sub>${i}</sub>`;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const ctx = t => `<span class="ctx">${t}</span><br>`;
+const NB = '\u202f';
+const expStr = E => `10<sup>${E < 0 ? '−' : ''}${Math.abs(E)}</sup>`;
+const fmtN = x => String(Math.round(x * 1e6) / 1e6).replace('.', ',').replace('-', '−');
+
+/* ================= Préfixes, notation ingénieur ================= */
+const PFX = { 'p': -12, 'n': -9, 'µ': -6, 'm': -3, '': 0, 'k': 3, 'M': 6, 'G': 9, 'T': 12 };
+const PFX_BY_EXP = {}; Object.entries(PFX).forEach(([k, v]) => { PFX_BY_EXP[v] = k; });
+
+const stripZeros = s => s.indexOf(',') >= 0 ? s.replace(/0+$/, '').replace(/,$/, '') : s;
+
+/* écriture décimale de n × 10^E, avec espaces pour les groupes de 3 chiffres */
+function decStr(n, E) {
+  const str = String(n), len = str.length;
+  let ip, fp = '';
+  if (E >= 0) ip = str + '0'.repeat(E);
+  else {
+    const k = -E;
+    if (k >= len) { ip = '0'; fp = '0'.repeat(k - len) + str; }
+    else { ip = str.slice(0, len - k); fp = str.slice(len - k); }
+  }
+  ip = ip.replace(/\B(?=(\d{3})+(?!\d))/g, NB);
+  fp = fp.replace(/(\d{3})(?=\d)/g, '$1' + NB);
+  return fp ? ip + ',' + fp : ip;
+}
+
+/* n × 10^E (n entier > 0) → mantisse comprise entre 1 et 1000, exposant multiple de 3 */
+function engOf(n, E, keep = false) {
+  const str = String(n), len = str.length, ord = E + len - 1, p = 3 * Math.floor(ord / 3), s = E - p;
+  let m;
+  if (s >= 0) m = str + '0'.repeat(s);
+  else {
+    const k = -s;
+    m = k >= len ? '0,' + '0'.repeat(k - len) + str : str.slice(0, len - k) + ',' + str.slice(len - k);
+  }
+  if (!keep) m = stripZeros(m);
+  const prefix = PFX_BY_EXP[p];
+  if (prefix === undefined) throw new Error('préfixe hors plage');
+  return { mant: m, p, prefix, val: parseFloat(m.replace(/[\s\u202f]/g, '').replace(',', '.')) };
+}
+const ansOf = (e, unit, strict = false) => ({ mant: e.mant, prefix: e.prefix, unit, val: e.val, abs: e.val * Math.pow(10, e.p), strict });
+const ansStr = a => `${a.mant} ${a.prefix}${a.unit}`;
+
+/* ================= Calcul exact (rationnels) ================= */
+const rat = (n, E = 0) => ({ N: BigInt(n), D: 1n, E });
+const mulr = (a, b) => ({ N: a.N * b.N, D: a.D * b.D, E: a.E + b.E });
+const divr = (a, b) => ({ N: a.N * b.D, D: a.D * b.N, E: a.E - b.E });
+const p10 = k => 10n ** BigInt(k);
+function ordOf(r) {
+  const ge = k => k >= 0 ? r.N >= r.D * p10(k) : r.N * p10(-k) >= r.D;
+  let k = Math.floor(Math.log10(Number(r.N) / Number(r.D)));
+  while (!ge(k)) k--;
+  while (ge(k + 1)) k++;
+  return k;
+}
+/* arrondi à 3 chiffres significatifs (4ᵉ chiffre ≥ 5 → on incrémente) */
+function sig3(r) {
+  const ord = ordOf(r), s = 2 - ord;
+  const num = s >= 0 ? r.N * p10(s) : r.N, den = s >= 0 ? r.D : r.D * p10(-s);
+  const q = (2n * num + den) / (2n * den);
+  return { n: Number(q), E: r.E - s };
+}
+function showRat(r) {
+  let m;
+  if (r.N % r.D === 0n) m = (r.N / r.D).toString();
+  else m = String(Number((Number(r.N) / Number(r.D)).toPrecision(6))).replace('.', ',');
+  return r.E === 0 ? m : `${m} × ${expStr(r.E)}`;
+}
+/* résultat arrondi + corrigé standard */
+function calc(r, unit) {
+  let { n, E } = sig3(r);
+  if (n === 1000) { n = 100; E += 1; }
+  const e = engOf(n, E, true), a = ansOf(e, unit, true);
+  const rounded = `${e.mant}${e.p === 0 ? '' : ' × ' + expStr(e.p)} ${unit}`;
+  return { ans: a, tail: `= ${showRat(r)} ${unit}<br>Arrondi à 3 chiffres significatifs (on conserve les zéros) : ${rounded} = <b>${ansStr(a)}</b>.` };
+}
+
+/* ================= Grandeurs aléatoires ================= */
+const MANTS = ['1,2', '1,5', '2,2', '3,3', '4,7', '5,6', '6,8', '8,2', '12', '15', '22', '33', '47', '56', '68', '82', '100', '120', '145', '220', '330', '470', '560', '680'];
+function mkQ(name, unit, pes) {
+  const ms = pick(MANTS), d = ms.includes(',') ? ms.split(',')[1].length : 0;
+  const q = { name, unit, n: parseInt(ms.replace(',', ''), 10), E: pick(pes) - d };
+  q.disp = Math.random() < 0.6 ? dispEng(q) : dispSci(q);
+  return q;
+}
+const dispEng = q => { const e = engOf(q.n, q.E); return `${e.mant} ${e.prefix}${q.unit}`; };
+function dispSci(q) {
+  const len = String(q.n).length, d = rnd(0, Math.min(len, 3));
+  return `${stripZeros(decStr(q.n, -d))} × ${expStr(q.E + d)} ${q.unit}`;
+}
+const sciOf = q => `${q.n}${q.E === 0 ? '' : ' × ' + expStr(q.E)} ${q.unit}`;
+const rq = q => rat(q.n, q.E);
+function makeTable() {
+  return {
+    U: [1, 2, 3].map(i => mkQ('U' + i, 'V', [-3, 0, 3])),
+    I: [1, 2, 3].map(i => mkQ('I' + i, 'A', [-6, -3, 0])),
+    R: [1, 2, 3].map(i => mkQ('R' + i, 'Ω', [-3, 0, 3, 6]))
+  };
+}
+const nm = q => sub(q.name[0], q.name.slice(1));
+function tableHtml(t, kinds) {
+  const lab = { U: 'Tensions', I: 'Courants', R: 'Résistances' };
+  return '<div class="tbl">' + kinds.map(k => `<div><b>${lab[k]} :</b> ${t[k].map(q => `${nm(q)} = ${q.disp}`).join(' ; ')}</div>`).join('') + '</div>';
+}
+const twoDistinct = (a, b) => { let i, j; do { i = rnd(0, 2); j = rnd(0, 2); } while (0); return [i, j]; };
+
+/* ================= Questions ================= */
+
+/* Q1 : présentation correcte d'une valeur */
+function q1() {
+  const [L, u] = pick([['U', 'V'], ['I', 'A'], ['R', 'Ω'], ['P', 'W']]), idx = rnd(1, 7), name = sub(L, idx);
+  let n, d;
+  do { d = rnd(0, 2); n = rnd(100, 999); } while (n % 10 === 0);
+  const pe = pick([-3, 0, 3]), pre = PFX_BY_EXP[pe];
+  const mant = decStr(n, -d);
+  const raw = n * 100 + rnd(1, 49), rawMant = decStr(raw, -d - 2), rawBase = decStr(raw, -d - 2 + pe);
+  const wrongVal = pe === 3 ? `${decStr(n, -d + 3)} ${u}` : `${decStr(n, -d - 3)} ${PFX_BY_EXP[pe + 3]}${u}`;
+  const A = { h: `${name} = ${mant} ${pre}${u}`, ok: true, why: 'Correct : même nom que dans l’énoncé, 3 chiffres significatifs, préfixe le plus approprié, espace puis unité.' };
+  const wrong = shuffle([
+    { h: `${name} = ${wrongVal}`, ok: false, why: 'Faux : la valeur est exacte, mais il faut le préfixe qui évite les zéros inutiles (mantisse comprise entre 1 et 1000).' },
+    { h: `${name} = ${mant}`, ok: false, why: 'Faux : l’unité est absente.' },
+    { h: `${L} = ${mant} ${pre}${u}`, ok: false, why: `Faux : le nom de la grandeur ne correspond pas à celui de l’énoncé (${L} au lieu de ${L}${idx}).` },
+    { h: `${name} = ${rawMant} ${pre}${u}`, ok: false, why: 'Faux : trop de chiffres, on ne conserve que 3 chiffres significatifs (arrondi).' },
+    { h: `${mant}${pre}${u}`, ok: false, why: 'Faux : il manque le nom de la grandeur et l’espace entre la valeur et l’unité.' }
+  ]).slice(0, rnd(3, 4));
+  const all = shuffle([A, ...wrong]);
+  return {
+    title: 'Présentation d’une valeur', kind: 'mcq',
+    text: `${ctx('Vous rédigez un compte rendu de mesure.')}L’appareil affiche ${name} = ${rawBase} ${u}.
+           Quelle présentation de cette valeur est correcte (3 chiffres significatifs, notation ingénieur) ?
+           Une seule réponse est juste.`,
+    opts: all.map(o => o.h), correct: all.findIndex(o => o.ok),
+    exp: `Règles : nom de la grandeur, signe =, valeur arrondie à 3 chiffres significatifs, préfixe le plus approprié, espace, unité.
+          La bonne valeur est <b>${name} = ${mant} ${pre}${u}</b>.<ul>${all.map(o => `<li>${o.ok ? '✓' : '✗'} ${o.h} — ${o.why}</li>`).join('')}</ul>`
+  };
+}
+
+/* Q2 : notation scientifique → préfixe le plus approprié */
+function q2() {
+  const idxs = shuffle([4, 5, 6, 7, 8, 9]).slice(0, 3), parts = [], lines = [];
+  idxs.forEach(i => {
+    for (;;) {
+      const [L, u] = pick([['U', 'V'], ['I', 'A'], ['R', 'Ω'], ['P', 'W']]);
+      const n = pick([15, 35, 25, 97, 327, 27, 39, 330, 134, 47, 68, 82, 12, 22, 56, 125]), len = String(n).length;
+      const d = rnd(0, Math.min(len, 3)), e = rnd(-6, 6), E = e - d;
+      let eng;
+      try { eng = engOf(n, E); } catch (x) { continue; }
+      if (eng.p < -9 || eng.p > 9) continue;
+      const mStr = stripZeros(decStr(n, -d)), name = sub(L, i);
+      lines.push(`${name} = ${mStr} × ${expStr(e)} ${u}`);
+      parts.push({ label: `${name} =`, kind: 'unit', ans: ansOf(eng, u),
+        why: `${name} = ${mStr} × ${expStr(e)} ${u} = ${eng.mant} × ${expStr(eng.p)} ${u} = <b>${eng.mant} ${eng.prefix}${u}</b>` });
+      break;
+    }
+  });
+  return {
+    title: 'Notation scientifique et préfixes', kind: 'parts',
+    text: `${ctx('Vous relevez des valeurs en notation scientifique sur un cahier de mesures.')}
+           Exprimer chaque grandeur avec le préfixe le plus approprié :<br>${lines.join('<br>')}`,
+    parts,
+    exp: `On ajuste l’exposant pour qu’il soit un multiple de 3 (notation ingénieur), ce qui donne une mantisse comprise entre 1 et 1000 :<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q3 : écriture décimale → préfixe le plus approprié */
+function q3() {
+  const parts = [], lines = [];
+  shuffle([1, 2, 3, 4, 5, 6]).slice(0, 2).forEach(i => {
+    const [L, u] = pick([['U', 'V'], ['I', 'A'], ['R', 'Ω'], ['P', 'W']]);
+    let n, d;
+    do { d = rnd(0, 2); n = rnd(100, 999); } while (n % 10 === 0);
+    const pe = pick([-6, -3, 3, 6]), pre = PFX_BY_EXP[pe], name = sub(L, i);
+    const base = `${decStr(n, -d + pe)} ${u}`, mant = decStr(n, -d);
+    lines.push(`${name} = ${base}`);
+    parts.push({ label: `${name} =`, kind: 'unit', ans: { mant, prefix: pre, unit: u, val: parseFloat(mant.replace(',', '.')), abs: parseFloat(mant.replace(',', '.')) * Math.pow(10, pe) },
+      why: `${name} = ${base} = ${mant} × ${expStr(pe)} ${u} = <b>${mant} ${pre}${u}</b>` });
+  });
+  return {
+    title: 'Écriture décimale et préfixes', kind: 'parts',
+    text: `${ctx('Vous lisez des valeurs écrites en notation décimale sur une fiche technique.')}
+           Exprimer chaque grandeur avec le préfixe le plus approprié :<br>${lines.join('<br>')}`,
+    parts,
+    exp: `On choisit le préfixe qui supprime le plus de zéros inutiles (mantisse comprise entre 1 et 1000) :<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q4 : arrondi à 3 chiffres significatifs */
+function q4() {
+  const mk = (Uset, Rset, RE, name) => {
+    let U, R;
+    do { U = pick(Uset); R = pick(Rset); } while (U % R === 0);
+    const r = divr(rat(U), rat(R, RE)), c = calc(r, 'A');
+    return { U, R, RE, name, c };
+  };
+  const a = mk([1, 2, 5, 10, 12], [3, 6, 7, 9, 11, 13], 0), b = mk([3, 5, 9, 12], [3, 7, 9, 11, 13], 3);
+  const t = x => `${sub('I', x.name)} = U / R`;
+  const parts = [a, b].map((x, i) => ({
+    label: `${sub('I', i + 1)} =`, kind: 'unit', ans: x.c.ans,
+    why: `${sub('I', i + 1)} = U / R = ${x.U} V / ${x.R} ${x.RE ? 'kΩ' : 'Ω'} ${x.c.tail}`
+  }));
+  return {
+    title: 'Arrondi et préfixe', kind: 'parts',
+    text: `${ctx('Vous vérifiez le courant dans deux montages.')}
+           Montage 1 : U = ${a.U} V aux bornes de R = ${a.R} Ω. Montage 2 : U = ${b.U} V aux bornes de R = ${b.R} kΩ.
+           Calculer ${sub('I', 1)} et ${sub('I', 2)} (3 chiffres significatifs, préfixe le plus approprié).`,
+    parts,
+    exp: `Loi d’Ohm : I = U / R. Pour arrondir à 3 chiffres significatifs, on regarde le 4ᵉ chiffre significatif :
+          s’il est supérieur ou égal à 5, on incrémente le 3ᵉ chiffre, sinon on ne le modifie pas.<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q5 : puissances P = U × I (choisir les bonnes valeurs dans un tableau) */
+function q5() {
+  const t = makeTable();
+  let p1, p2;
+  do { p1 = [rnd(0, 2), rnd(0, 2)]; p2 = [rnd(0, 2), rnd(0, 2)]; } while (p1[0] === p2[0] && p1[1] === p2[1]);
+  const parts = [p1, p2].map((p, k) => {
+    const U = t.U[p[0]], I = t.I[p[1]], c = calc(mulr(rq(U), rq(I)), 'W');
+    return { label: `${sub('P', k + 1)} = ${nm(U)} × ${nm(I)} =`, kind: 'unit', ans: c.ans,
+      why: `${sub('P', k + 1)} = ${nm(U)} × ${nm(I)} = (${sciOf(U)}) × (${sciOf(I)}) ${c.tail}` };
+  });
+  return {
+    title: 'Puissance avec préfixes', kind: 'parts',
+    text: `${ctx('Vous estimez la puissance de plusieurs étages d’une alimentation à partir de vos relevés.')}${tableHtml(t, ['U', 'I'])}
+           Calculer ${parts.map(p => p.label.replace(/ =$/, '')).join(' et ')} (3 chiffres significatifs, préfixe le plus approprié).`,
+    parts,
+    exp: `On repère les bonnes valeurs dans le tableau, on les écrit en notation scientifique, puis on applique P = U × I :<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q6 : loi d'Ohm avec préfixes */
+function q6() {
+  const t = makeTable(), iU = rnd(0, 2), iI = rnd(0, 2), kR = rnd(0, 2), kI = rnd(0, 2);
+  const c1 = calc(divr(rq(t.U[iU]), rq(t.I[iI])), 'Ω'), c2 = calc(mulr(rq(t.R[kR]), rq(t.I[kI])), 'V');
+  const parts = [
+    { label: `${sub('R', 4)} = ${nm(t.U[iU])} / ${nm(t.I[iI])} =`, kind: 'unit', ans: c1.ans,
+      why: `${sub('R', 4)} = ${nm(t.U[iU])} / ${nm(t.I[iI])} = (${sciOf(t.U[iU])}) / (${sciOf(t.I[iI])}) ${c1.tail}` },
+    { label: `${sub('U', 4)} = ${nm(t.R[kR])} × ${nm(t.I[kI])} =`, kind: 'unit', ans: c2.ans,
+      why: `${sub('U', 4)} = ${nm(t.R[kR])} × ${nm(t.I[kI])} = (${sciOf(t.R[kR])}) × (${sciOf(t.I[kI])}) ${c2.tail}` }
+  ];
+  return {
+    title: 'Loi d’Ohm avec préfixes', kind: 'parts',
+    text: `${ctx('Vous analysez un circuit à partir de relevés de mesure.')}${tableHtml(t, ['U', 'I', 'R'])}
+           Calculer ${parts.map(p => p.label.replace(/ =$/, '')).join(' et ')} (3 chiffres significatifs, préfixe le plus approprié).`,
+    parts,
+    exp: `Loi d’Ohm : U = R × I et R = U / I.<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q7 : puissances avec carrés */
+function q7() {
+  const t = makeTable(), kR = rnd(0, 2), jI = rnd(0, 2), iU = rnd(0, 2), mR = rnd(0, 2);
+  const c1 = calc(mulr(rq(t.R[kR]), mulr(rq(t.I[jI]), rq(t.I[jI]))), 'W'), c2 = calc(divr(mulr(rq(t.U[iU]), rq(t.U[iU])), rq(t.R[mR])), 'W');
+  const parts = [
+    { label: `${sub('P', 3)} = ${nm(t.R[kR])} × (${nm(t.I[jI])})² =`, kind: 'unit', ans: c1.ans,
+      why: `${sub('P', 3)} = ${nm(t.R[kR])} × (${nm(t.I[jI])})² = (${sciOf(t.R[kR])}) × (${sciOf(t.I[jI])})² ${c1.tail}` },
+    { label: `${sub('P', 4)} = (${nm(t.U[iU])})² / ${nm(t.R[mR])} =`, kind: 'unit', ans: c2.ans,
+      why: `${sub('P', 4)} = (${nm(t.U[iU])})² / ${nm(t.R[mR])} = (${sciOf(t.U[iU])})² / (${sciOf(t.R[mR])}) ${c2.tail}` }
+  ];
+  return {
+    title: 'Puissance et carrés', kind: 'parts',
+    text: `${ctx('Vous vérifiez la puissance dissipée par des résistances d’un montage.')}${tableHtml(t, ['U', 'I', 'R'])}
+           Calculer ${parts.map(p => p.label.replace(/ =$/, '')).join(' et ')} (3 chiffres significatifs, préfixe le plus approprié).`,
+    parts,
+    exp: `Attention : le carré s’applique à la valeur <i>et</i> à la puissance de 10 (par exemple (3 × 10<sup>−3</sup>)² = 9 × 10<sup>−6</sup>).<br>${parts.map(p => p.why).join('<br>')}`
+  };
+}
+
+/* Q8 : dimensionnement d'un parc informatique */
+function q8() {
+  const Pec = pick([60, 75, 90, 100]), Pt = pick([300, 350, 400, 450]), Pc = pick([3, 4, 5, 6]), N = rnd(5, 10);
+  const c = calc(rat(N * (Pec + Pt)), 'W');
+  const n1 = Math.floor(Pc * 1000 / (Pec + Pt)), n2 = Math.floor(Pc * 1000 / (2 * Pec + Pt));
+  const reste1 = Pc * 1000 - n1 * (Pec + Pt), reste2 = Pc * 1000 - n2 * (2 * Pec + Pt);
+  return {
+    title: 'Dimensionnement d’un parc informatique', kind: 'parts',
+    text: `${ctx('Vous travaillez pour HARDTEK, installateur : vous équipez des bureaux de postes PC + écran.')}
+           Documentation : ${sub('P', 'écran')} = ${Pec} W max ; ${sub('P', 'tour')} = ${Pt} W max. Le circuit électrique peut délivrer ${sub('P', 'circuit')} = ${Pc} kW.<br>
+           a) Calculer ${sub('P', 'total')}, la puissance maximale de ${N} postes (1 écran + 1 PC tour par poste).<br>
+           b) Combien de postes ${sub('N', 'pe')} peut-on installer au maximum ?<br>
+           c) Le client veut finalement 2 écrans par poste : combien de postes ${sub('N', 'p2e')} peut-on installer au maximum ?`,
+    parts: [
+      { label: `a) ${sub('P', 'total')} =`, kind: 'unit', ans: c.ans },
+      { label: `b) ${sub('N', 'pe')} =`, kind: 'num', ans: n1, unit: 'postes' },
+      { label: `c) ${sub('N', 'p2e')} =`, kind: 'num', ans: n2, unit: 'postes' }
+    ],
+    exp: `<b>a)</b> ${sub('P', 'total')}(N) = N × (${sub('P', 'écran')} + ${sub('P', 'tour')}) = ${N} × (${Pec} + ${Pt}) = ${N * (Pec + Pt)} W ${c.tail.replace(/^= [^<]*<br>/, '<br>')}<br>
+          <b>b)</b> Il faut des unités identiques : ${sub('P', 'circuit')} = ${Pc} kW = ${Pc * 1000} W. Calcul littéral : ${sub('N', 'pe')} = ⌊ ${sub('P', 'circuit')} / (${sub('P', 'écran')} + ${sub('P', 'tour')}) ⌋.
+          A.N. : ${Pc * 1000} / ${Pec + Pt} = ${fmtN(Pc * 1000 / (Pec + Pt))}, donc <b>${n1} postes</b> (on arrondit à l’entier inférieur : un poste de plus dépasserait la limite).
+          Marge restante : ${reste1} W.<br>
+          <b>c)</b> Avec 2 écrans : ${sub('N', 'p2e')} = ⌊ ${sub('P', 'circuit')} / (2 × ${sub('P', 'écran')} + ${sub('P', 'tour')}) ⌋ = ⌊ ${Pc * 1000} / ${2 * Pec + Pt} ⌋ = ⌊ ${fmtN(Pc * 1000 / (2 * Pec + Pt))} ⌋ = <b>${n2} postes</b>.
+          Marge restante : ${reste2} W. Installer ${n1} postes à 2 écrans dépasserait la puissance du circuit.`
+  };
+}
+
+/* Q9 : stockage des enregistrements d'un système de caméras */
+function q9() {
+  const Nc = pick([8, 12, 16]), days = pick([7, 15, 30]);
+  const D1 = pick([1, 2, 4, 6, 8]), D2 = pick([128, 256, 512]);
+  const T = N => ({ N });
+  const stor = (Dn, Dp) => divr(mulr(mulr(rat(Dn, Dp), rat(Nc * 86400 * days)), rat(1)), rat(8));
+  const c1 = calc(stor(D1, 6), 'B'), c2 = calc(stor(D2, 3), 'B');
+  const lit = `${sub('S', 'disque')} = N × D × ${sub('D', 'légal')} / 8`;
+  const sec = Nc * 86400 * days;
+  return {
+    title: 'Stockage des enregistrements vidéo', kind: 'parts',
+    text: `${ctx('Technicien chez CITADEL, vous préparez un devis : des caméras reliées à un enregistreur NVR.')}
+           ${Nc} caméras produisent chacune un flux de ${D1} Mbps. Les enregistrements sont conservés ${days} jours (1 octet = 8 bits).
+           Calculer la taille ${sub('S', 'disque')} du disque dur nécessaire :<br>
+           a) avec un flux de ${D1} Mbps par caméra ;<br>
+           b) avec un flux ramené à ${D2} kbps par caméra.`,
+    parts: [
+      { label: `a) ${sub('S', 'disque')} =`, kind: 'fixed', ans: c1.ans },
+      { label: `b) ${sub('S', 'disque')} =`, kind: 'fixed', ans: c2.ans }
+    ],
+    exp: `Calcul littéral : ${lit} (N caméras, D le débit en bit/s, ${sub('D', 'légal')} la durée en secondes, division par 8 pour passer des bits aux octets).<br>
+          Durée : ${days} × 24 × 3600 = ${decStr(days * 86400, 0)} s, soit ${decStr(sec, 0)} caméra·secondes.<br>
+          <b>a)</b> ${sub('S', 'disque')} = ${Nc} × (${D1} × ${expStr(6)}) × ${decStr(days * 86400, 0)} / 8 ${c1.tail}<br>
+          <b>b)</b> ${sub('S', 'disque')} = ${Nc} × (${D2} × ${expStr(3)}) × ${decStr(days * 86400, 0)} / 8 ${c2.tail}`
+  };
+}
+
+/* Q10 : débit d'une caméra non compressée */
+function q10() {
+  const [w, h] = pick([[640, 480], [1280, 720], [1920, 1080], [2560, 1440]]), f = pick([10, 15, 25, 30]), b = pick([8, 12, 24]);
+  const surf = rat(w * h), cS = calc(surf, 'pixel'), cQ = calc(mulr(mulr(surf, rat(f)), rat(b)), 'bps');
+  return {
+    title: 'Débit d’une caméra', kind: 'parts',
+    text: `${ctx('Vous configurez une caméra de surveillance reliée à un enregistreur.')}
+           Image de largeur width = ${w} pixels et de hauteur height = ${h} pixels, f = ${f} images par seconde, ${b} bits par pixel (flux non compressé).<br>
+           a) Calculer le nombre de pixels d’une image (surface).<br>
+           b) Calculer ${sub('Q', '1s')}, la quantité de données transmise en une seconde (en bit/s, noté bps).`,
+    parts: [
+      { label: 'a) surface =', kind: 'fixed', ans: cS.ans },
+      { label: `b) ${sub('Q', '1s')} =`, kind: 'fixed', ans: cQ.ans }
+    ],
+    exp: `<b>a)</b> surface = width × height = ${decStr(w, 0)} × ${decStr(h, 0)} ${cS.tail}<br>
+          <b>b)</b> ${sub('Q', '1s')} = surface × f × (bits par pixel) = ${decStr(w * h, 0)} × ${f} × ${b} ${cQ.tail}<br>
+          Pour b), on part de la valeur exacte de la surface (et non de la valeur arrondie) pour limiter l’erreur d’arrondi.`
+  };
+}
+
+/* ================= Correction des réponses ================= */
+function normRest(rest, unit) {
+  let r = rest.replace(/\s+/g, '').replace(/μ/g, 'µ');
+  if (unit === 'Ω') r = r.replace(/ohms?$/i, 'Ω');
+  if (unit === 'B') { r = r.replace(/(octets?|bytes?)$/i, 'B'); if (/o$/.test(r)) r = r.slice(0, -1) + 'B'; }
+  if (unit === 'pixel') r = r.replace(/(pixels?|px)$/i, 'pixel');
+  if (unit === 'bps') r = r.replace(/(bits?\/s|b\/s|bps)$/i, 'bps');
+  if (r.length > 1 && r[0] === 'u') r = 'µ' + r.slice(1);
+  if (r.length > 1 && r[0] === 'K') r = 'k' + r.slice(1);
+  return r;
+}
+function parseValue(raw) {
+  const m = String(raw || '').trim().match(/^([+-]?\d+(?:[\s\u202f\u00a0]\d{3})*(?:[.,]\d+)?)\s*([^\d].*)?$/);
+  if (!m) return null;
+  return { num: parseFloat(m[1].replace(/[\s\u202f\u00a0]/g, '').replace(',', '.').replace('−', '-')), rest: m[2] || '',
+           mt: m[1].replace(/[\s\u202f\u00a0]/g, '').replace('.', ',').replace('−', '-').replace(/^\+/, '') };
+}
+function gradeUnit(raw, a) {
+  const v = parseValue(raw);
+  if (!v) return { ok: false };
+  const r = normRest(v.rest, a.unit);
+  if (Math.abs(v.num - a.val) <= 1e-9 * Math.max(1, Math.abs(a.val)) && r === a.prefix + a.unit) {
+    if (!a.strict || v.mt === a.mant) return { ok: true };
+    return { ok: false, note: 'valeur exacte, mais il faut conserver les 3 chiffres significatifs (par exemple 1,50 et non 1,5)' };
+  }
+  if (r.endsWith(a.unit)) {
+    const pre = r.slice(0, r.length - a.unit.length);
+    if (pre in PFX && Math.abs(v.num * Math.pow(10, PFX[pre]) - a.abs) <= 1e-9 * Math.abs(a.abs)) return { ok: false, note: 'valeur exacte, mais préfixe ou mantisse non conforme à la notation ingénieur' };
+  }
+  return { ok: false };
+}
+/* unité déjà affichée : l'élève ne saisit que le nombre */
+function gradeFixed(raw, a) {
+  const v = parseValue(raw);
+  if (!v) return { ok: false };
+  if (v.rest !== '' && normRest(v.rest, a.unit) !== a.prefix + a.unit) return { ok: false };
+  if (Math.abs(v.num - a.val) > 1e-9 * Math.max(1, Math.abs(a.val))) return { ok: false };
+  if (a.strict && v.mt !== a.mant) return { ok: false, note: 'valeur exacte, mais il faut conserver les 3 chiffres significatifs (par exemple 1,50 et non 1,5)' };
+  return { ok: true };
+}
+function gradeNum(raw, ans) {
+  const v = parseValue(raw);
+  return !!v && v.rest === '' && Math.abs(v.num - ans) < 1e-9;
+}
+
+/* ================= Application ================= */
+let questions = [];
+const retry = f => { for (let i = 0; i < 100; i++) { try { return f(); } catch (e) { /* nouveau tirage */ } } throw new Error('génération impossible'); };
+
+function renderQuestion(q, i) {
+  let inputs = '';
+  if (q.kind === 'mcq') {
+    inputs = '<div class="opts">' + q.opts.map((o, j) => `<label><input type="radio" name="q${i}" value="${j}">${o}</label>`).join('') + '</div>';
+  } else {
+    inputs = q.parts.map((p, j) => `<div class="row"><span>${p.label}</span>
+      <input type="text" id="q${i}_${j}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Réponse"
+             placeholder="${p.kind === 'unit' ? 'ex. 13,4 mV' : 'nombre'}">
+      <span class="unit">${p.kind === 'num' ? (p.unit || '') : p.kind === 'fixed' ? p.ans.prefix + p.ans.unit : ''}</span></div>`).join('');
+  }
+  return `<div class="card"><h2>Question ${i + 1} / 10</h2><p class="qt">${q.title}</p><p>${q.text}</p>${inputs}</div>`;
+}
+
+function newTest() {
+  questions = [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10].map(retry);
+  $('#quiz').innerHTML = questions.map(renderQuestion).join('');
+  $('#result').style.display = 'none';
+  $('#actions').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function grade(q, i) {
+  if (q.kind === 'mcq') {
+    const els = [...document.querySelectorAll(`[name="q${i}"]`)];
+    els.forEach(e => { e.disabled = true; });
+    const sel = els.filter(e => e.checked).map(e => +e.value);
+    return { pts: sel.length === 1 && sel[0] === q.correct ? 1 : 0,
+             user: sel.length ? q.opts[sel[0]] : '(aucune réponse)', ans: `<b>${q.opts[q.correct]}</b>` };
+  }
+  let ok = 0; const user = [], ans = [];
+  q.parts.forEach((p, j) => {
+    const el = $(`#q${i}_${j}`); el.disabled = true;
+    const raw = el.value.trim();
+    let good, note = '';
+    if (p.kind === 'unit' || p.kind === 'fixed') {
+      const g = p.kind === 'unit' ? gradeUnit(raw, p.ans) : gradeFixed(raw, p.ans);
+      good = g.ok; note = g.note ? ` <span class="note">(${g.note})</span>` : '';
+    } else good = gradeNum(raw, p.ans);
+    if (good) ok++;
+    user.push(`${p.label} ${raw ? esc(raw) : '(vide)'}${p.kind === 'fixed' ? ' ' + p.ans.prefix + p.ans.unit : ''}${note}`);
+    ans.push(`${p.label} <b>${p.kind !== 'num' ? ansStr(p.ans) : p.ans + ' ' + (p.unit || '')}</b>`);
+  });
+  return { pts: ok / q.parts.length, user: user.join('<br>'), ans: ans.join('<br>') };
+}
+
+function submit() {
+  let total = 0, html = '';
+  questions.forEach((q, i) => {
+    const g = grade(q, i);
+    total += g.pts;
+    const cls = g.pts === 1 ? 'ok' : g.pts > 0 ? 'part' : 'ko';
+    const txt = g.pts === 1 ? 'Correct' : g.pts > 0 ? 'Partiellement correct' : 'Incorrect';
+    html += `<div class="card item ${cls}">
+      <h2>Question ${i + 1} / 10<span class="badge ${cls}">${txt}</span></h2>
+      <p class="qt">${q.title}</p>
+      <p>${q.text}</p>
+      <p><b>Votre réponse :</b><br>${g.user}</p><p><b>Réponse attendue :</b><br>${g.ans}</p>
+      <div class="exp">${q.exp}</div></div>`;
+  });
+  const note = Math.round(total * 2) / 2;
+  $('#score').textContent = `Note : ${fmtN(note)} / 10`;
+  $('#comment').textContent = note === 10 ? 'Parfait, aucune erreur !'
+    : note >= 8 ? 'Très bien, quelques détails à revoir.'
+    : note >= 5 ? 'Correct, relisez le corrigé des questions ratées.'
+    : 'À retravailler : lisez le corrigé puis refaites un test.';
+  $('#corrige').innerHTML = html;
+  $('#result').style.display = 'block';
+  $('#actions').style.display = 'none';
+  $('#result').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('#submit').addEventListener('click', submit);
+$('#restart').addEventListener('click', newTest);
+$('#restart2').addEventListener('click', newTest);
+newTest();
+</script>
+</body>
+</html>
